@@ -1,0 +1,57 @@
+name: Update S&P 500 52W Highs/Lows
+
+on:
+  schedule:
+    # Run at 10:00 PM UTC (6:00 PM ET) on weekdays - after market close
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'update'
+        type: choice
+        options:
+          - update
+          - initial
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance pandas numpy
+
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "MODE=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          else
+            echo "MODE=update" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run data fetch
+        run: |
+          python fetch_52w_data.py --mode ${{ steps.mode.outputs.MODE }}
+        timeout-minutes: 60
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          git diff --cached --quiet || git commit -m "📊 Update 52W highs/lows data - $(date -u +%Y-%m-%d)"
+          git push
