@@ -291,13 +291,16 @@ function updateSignalBadges(data, signals) {
 
 // ── Chart Config ──
 const ttip = { backgroundColor: "rgba(10,14,23,.95)", titleColor: "#f1f5f9", bodyColor: "#94a3b8", borderColor: "#1e293b", borderWidth: 1, cornerRadius: 8, padding: 12, titleFont: { family: "'JetBrains Mono',monospace", size: 11 }, bodyFont: { family: "'Noto Sans KR',sans-serif", size: 12 } };
-function xCfg(r) { return { type: "time", time: { unit: r <= 180 ? "week" : r <= 730 ? "month" : "quarter" }, grid: { color: "rgba(30,41,59,.4)" }, ticks: { color: "#475569", font: { family: "'JetBrains Mono',monospace", size: 10 }, maxRotation: 0 } }; }
+let xMin = null, xMax = null;
+function xCfg(r) { return { type: "time", min: xMin, max: xMax, time: { unit: r <= 180 ? "week" : r <= 730 ? "month" : "quarter" }, grid: { color: "rgba(30,41,59,.4)" }, ticks: { color: "#475569", font: { family: "'JetBrains Mono',monospace", size: 10 }, maxRotation: 0 } }; }
 function yCfg(o = {}) { return { position: o.pos || "left", grid: { color: o.noGrid ? "transparent" : "rgba(30,41,59,.4)" }, ticks: { color: o.c || "#475569", font: { family: "'JetBrains Mono',monospace", size: 10 }, callback: o.fmt || (v => v) } }; }
 
 function buildCharts() {
     const data = getFiltered();
     if (!data.length) return;
     const labels = data.map(d => d.date);
+    xMin = labels[0];
+    xMax = labels[labels.length - 1];
     const { highMA10, lowMA10, netMA10, spyMA50, signals } = computeSignals(data);
     updateSignalBadges(data, signals);
     document.getElementById("dateRange").textContent = `${labels[0]} → ${labels[labels.length - 1]}`;
