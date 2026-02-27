@@ -187,11 +187,18 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 <div id="loadingEl" class="loading"><div class="spinner"></div><div>데이터를 불러오는 중...</div></div>
 <div id="chartsEl" style="display:none;">
 
+<!-- SPY Price -->
+<div class="chart-card">
+<div class="chart-head" style="justify-content:center;"><h3>SPY 가격</h3></div>
+<div class="chart-area" style="height:300px;"><canvas id="spyChart"></canvas></div>
+<div class="inline-share" id="inlineShare1"></div>
+</div>
+
 <!-- Composite history -->
 <div class="chart-card">
 <div class="chart-head"><h3>종합 공포 & 탐욕 지수 히스토리</h3><span class="badge" id="dateRange">—</span></div>
 <div class="chart-area" style="height:300px;"><canvas id="compositeChart"></canvas></div>
-<div class="inline-share" id="inlineShare1"></div>
+<div class="inline-share" id="inlineShare2"></div>
 </div>
 
 <!-- Individual indicator charts -->
@@ -250,8 +257,9 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 var SHARE_URL='https://herdvibe.com/109';
 var KAKAO_KEY='a43ed7b39fac35458f4f9df925a279b5';
 var DATA_URL='./data/sentiment.json';
+var SPY_URL='./data/sp500_52w_highs_lows.json';
 
-var raw=[],currentRange=365,charts={};
+var raw=[],spyMap={},currentRange=365,charts={};
 
 /* ── Helpers ── */
 function getFiltered(){var c=new Date();c.setDate(c.getDate()-currentRange);var cs=c.toISOString().slice(0,10);return raw.filter(function(d){return d.date>=cs;});}
@@ -343,6 +351,42 @@ function buildCharts(){
     xMin=labels[0];xMax=labels[labels.length-1];
     document.getElementById('dateRange').textContent=labels[0]+' → '+labels[labels.length-1];
 
+    /* Sentiment zone data for SPY overlay */
+    var sentimentZoneData=data.map(function(d){return{date:d.date,score:d.composite};});
+    var spySentimentPlugin={id:'spySentiment',beforeDraw:function(ch){
+        var ca=ch.chartArea;if(!ca||!sentimentZoneData.length)return;
+        var ctx=ch.ctx,xScale=ch.scales.x;
+        ctx.save();
+        for(var i=0;i<sentimentZoneData.length;i++){
+            var d=sentimentZoneData[i],s=d.score;
+            var x=xScale.getPixelForValue(new Date(d.date).getTime());
+            var nextX=(i<sentimentZoneData.length-1)?xScale.getPixelForValue(new Date(sentimentZoneData[i+1].date).getTime()):x+2;
+            if(x<ca.left||x>ca.right)continue;
+            var w=Math.max(nextX-x,1.5);
+            if(s>=80){ctx.fillStyle='rgba(0,255,136,0.08)';}
+            else if(s<=20){ctx.fillStyle='rgba(255,68,102,0.08)';}
+            else{continue;}
+            ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);
+        }
+        ctx.restore();
+    }};
+
+    /* 0. SPY Chart */
+    var spyCtx=document.getElementById('spyChart').getContext('2d');
+    if(charts.spy)charts.spy.destroy();
+    var spyPrices=labels.map(function(d){return spyMap[d]||null;});
+    charts.spy=new Chart(spyCtx,{type:'line',plugins:[wmPlugin,spySentimentPlugin],data:{labels:labels,datasets:[
+        {label:'SPY',data:spyPrices,borderColor:'rgba(34,211,238,.85)',borderWidth:2,pointRadius:0,tension:.2,fill:false},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:function(c){
+            var price=c.raw;var d=data[c.dataIndex];
+            var txt='SPY: '+(price!=null?'$'+Number(price).toFixed(2):'—');
+            if(d)txt+=' · 센티먼트: '+d.composite+' ('+labelKo(d.label)+')';
+            return txt;
+        }}}},
+        scales:{x:xCfg(currentRange),y:yCfg({c:'#22d3ee',fmt:function(v){return'$'+v;}})}
+    }});
+
     /* 1. Composite */
     var c1=document.getElementById('compositeChart').getContext('2d');
     if(charts.comp)charts.comp.destroy();
@@ -394,12 +438,27 @@ function buildCharts(){
 /* ── Init ── */
 async function init(){
     try{
-        var resp=await fetch(DATA_URL);if(!resp.ok)throw new Error('HTTP '+resp.status);
-        var json=await resp.json();raw=json.data||[];
+        // Load both JSONs in parallel
+        var [sentResp, spyResp] = await Promise.all([
+            fetch(DATA_URL),
+            fetch(SPY_URL).catch(function(){return null;})
+        ]);
+        if(!sentResp.ok)throw new Error('HTTP '+sentResp.status);
+        var json=await sentResp.json();raw=json.data||[];
         if(!raw.length)throw new Error('No data');
 
+        // Extract SPY prices from 52w JSON
+        if(spyResp&&spyResp.ok){
+            var spyJson=await spyResp.json();
+            (spyJson.data||[]).forEach(function(d){
+                if(d.spy_close)spyMap[d.date]=d.spy_close;
+            });
+        }
+
         var last=raw[raw.length-1];
-        document.getElementById('updateInfo').textContent='마지막: '+last.date+' · '+raw.length.toLocaleString()+'일 · 지표 '+last.count+'개';
+        var spyPrice=spyMap[last.date];
+        var spyText=spyPrice?' · SPY $'+spyPrice:'';
+        document.getElementById('updateInfo').textContent='마지막: '+last.date+' · '+raw.length.toLocaleString()+'일 · 지표 '+last.count+'개'+spyText;
 
         updateGauge(last.composite,last.label);
         updateIndicators(last);
@@ -435,6 +494,7 @@ var lI='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="curr
 function makeInlineShare(el){if(!el)return;el.innerHTML='<span class="lbl">공유</span><button class="share-btn share-btn--x" onclick="doShare(\'twitter\',this)">'+xI+'</button><button class="share-btn share-btn--kakao" onclick="doShare(\'kakao\',this)">'+kI+'</button><button class="share-btn share-btn--tg" onclick="doShare(\'telegram\',this)">'+tI+'</button><button class="share-btn share-btn--copy" onclick="doShare(\'link\',this)">'+lI+'</button>';}
 function makeShareBar(el){if(!el)return;el.innerHTML='<div class="share-bar"><div class="share-bar-preview"><b>공포 & 탐욕 지수</b> — herdvibe.com</div><div class="share-bar-buttons"><button class="share-btn share-btn--x" onclick="doShare(\'twitter\',this)">'+xI+'<span class="lbl">트위터</span></button><button class="share-btn share-btn--kakao" onclick="doShare(\'kakao\',this)">'+kI+'<span class="lbl">카카오톡</span></button><button class="share-btn share-btn--tg" onclick="doShare(\'telegram\',this)">'+tI+'<span class="lbl">텔레그램</span></button><button class="share-btn share-btn--ig" onclick="doShare(\'instagram\',this)">'+iI+'<span class="lbl">인스타</span></button><button class="share-btn share-btn--copy" onclick="doShare(\'link\',this)">'+lI+'<span class="lbl">링크 복사</span></button></div></div>';}
 makeInlineShare(document.getElementById('inlineShare1'));
+makeInlineShare(document.getElementById('inlineShare2'));
 makeShareBar(document.getElementById('shareBarWrap'));
 
 /* ── iframe resize ── */
