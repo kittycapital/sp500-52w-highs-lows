@@ -1,4 +1,4 @@
-name: Update S&P 500 52W Highs/Lows
+name: Update S&P 500 52W Highs/Lows + Sentiment
 
 on:
   schedule:
@@ -43,15 +43,24 @@ jobs:
             echo "MODE=update" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run data fetch
+      - name: Run 52W highs/lows fetch
         run: |
           python fetch_52w_data.py --mode ${{ steps.mode.outputs.MODE }}
         timeout-minutes: 60
+
+      - name: Run sentiment data fetch
+        run: |
+          if [ "${{ steps.mode.outputs.MODE }}" = "initial" ]; then
+            python fetch_sentiment.py --full
+          else
+            python fetch_sentiment.py
+          fi
+        timeout-minutes: 30
 
       - name: Commit and push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add -A
-          git diff --cached --quiet || git commit -m "📊 Update 52W highs/lows data - $(date -u +%Y-%m-%d)"
+          git diff --cached --quiet || git commit -m "📊 Update 52W + Sentiment data - $(date -u +%Y-%m-%d)"
           git push
