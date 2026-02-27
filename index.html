@@ -22,11 +22,6 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 .hdr-title{font-weight:700;font-size:18px;color:#fff}
 .page{max-width:1100px;margin:0 auto;padding:20px 28px}
 .sub-info{text-align:center;font-size:11px;color:var(--t4);margin-bottom:16px;font-family:'JetBrains Mono',monospace}
-.nav-link{display:flex;justify-content:center;margin-bottom:16px;gap:8px}
-.nav-link a{font-size:12px;padding:6px 16px;border:1px solid var(--bdr);border-radius:8px;color:var(--t3);transition:all .2s;font-weight:500}
-.nav-link a:hover{border-color:var(--b);color:var(--b)}
-.nav-link a.active{background:var(--b);border-color:var(--b);color:#fff}
-
 /* Controls */
 .controls{display:flex;justify-content:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .rbtn{padding:5px 14px;border:1px solid var(--bdr);background:transparent;color:var(--t3);border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .15s}
@@ -37,14 +32,8 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 .signal-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
 .sig-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid}
 .sig-badge .dot{width:8px;height:8px;border-radius:50%}
-.sig-bull{background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.25);color:var(--g)}
-.sig-bull .dot{background:var(--g);box-shadow:0 0 6px var(--g)}
-.sig-bear{background:rgba(255,68,102,.08);border-color:rgba(255,68,102,.25);color:var(--r)}
-.sig-bear .dot{background:var(--r);box-shadow:0 0 6px var(--r)}
 .sig-neutral{background:rgba(68,136,255,.08);border-color:rgba(68,136,255,.25);color:var(--b)}
 .sig-neutral .dot{background:var(--b);box-shadow:0 0 6px var(--b)}
-.sig-warn{background:rgba(255,204,0,.08);border-color:rgba(255,204,0,.25);color:var(--y)}
-.sig-warn .dot{background:var(--y);box-shadow:0 0 6px var(--y)}
 .sig-ob{background:rgba(255,68,102,.1);border-color:rgba(255,68,102,.3);color:var(--r)}
 .sig-ob .dot{background:var(--r);box-shadow:0 0 6px var(--r)}
 .sig-os{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.3);color:var(--g)}
@@ -122,11 +111,6 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 
 <div class="sub-info" id="updateInfo">데이터 로딩 중...</div>
 
-<div class="nav-link">
-<a href="https://herdvibe.com/105" class="active">52주 신고/신저</a>
-<a href="https://herdvibe.com/106">신고신저 추세선</a>
-</div>
-
 <div class="controls">
 <button class="rbtn" data-range="90">3M</button>
 <button class="rbtn" data-range="365">1Y</button>
@@ -151,13 +135,13 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 <div id="chartsEl" style="display:none;">
 
 <div class="chart-card">
-<div class="chart-head"><h3>SPY 가격 + 트레이딩 시그널</h3><span class="badge" id="dateRange">—</span></div>
+<div class="chart-head" style="justify-content:center;"><h3>SPY 가격</h3></div>
 <div class="chart-area" style="height:340px;"><canvas id="spyChart"></canvas></div>
 <div class="inline-share" id="inlineShare1"></div>
 </div>
 
 <div class="chart-card">
-<div class="chart-head"><h3>52주 신고 / 신저 종목 수</h3></div>
+<div class="chart-head"><h3>52주 신고 / 신저 종목 수</h3><span class="badge" id="dateRange">—</span></div>
 <div class="chart-area" style="height:250px;"><canvas id="mainChart"></canvas></div>
 </div>
 
@@ -181,12 +165,8 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 <div class="legend-box">
 <h3>📖 시그널 해석 가이드</h3>
 <div class="legend-grid">
-<div class="legend-item"><span class="icon">🟢</span><strong>BUY</strong> — SPY &gt; 50MA + Net MA 음→양 전환</div>
-<div class="legend-item"><span class="icon">🔴</span><strong>SELL</strong> — SPY &lt; 50MA + Net MA 양→음 전환</div>
-<div class="legend-item"><span class="icon">🔥</span><strong>Breadth Thrust</strong> — 신고 100+ (20%↑): 강한 매수 구간</div>
-<div class="legend-item"><span class="icon">💀</span><strong>Washout</strong> — 신저 100+ (20%↑): 패닉 반등 주의</div>
-<div class="legend-item"><span class="icon">🔺</span><strong>Overbought</strong> — 신고 비율 15%↑: 과열 가능성</div>
-<div class="legend-item"><span class="icon">🔻</span><strong>Oversold</strong> — 신저 비율 10%↑: 공포 매도 가능성</div>
+<div class="legend-item"><span class="icon">🔺</span><strong>Overbought</strong> — 신고 비율 20%↑: 과열 구간. SPY 차트에 빨간 세로 밴드 표시.</div>
+<div class="legend-item"><span class="icon">🔻</span><strong>Oversold</strong> — 신저 비율 10%↑: 공포 구간. SPY 차트에 초록 세로 밴드 표시.</div>
 </div>
 </div>
 
@@ -200,7 +180,7 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 var SHARE_URL='https://herdvibe.com/105';
 var KAKAO_KEY='a43ed7b39fac35458f4f9df925a279b5';
 var DATA_URL='./data/sp500_52w_highs_lows.json';
-var OB_THRESHOLD=15;
+var OB_THRESHOLD=20;
 var OS_THRESHOLD=10;
 
 var raw=[],currentRange=1825,charts={};
@@ -214,21 +194,8 @@ function computeSignals(data){
     var highs=data.map(function(d){return d.highs;});
     var lows=data.map(function(d){return d.lows;});
     var net=data.map(function(d){return d.highs-d.lows;});
-    var spyArr=data.map(function(d){return d.spy_close||0;});
-    var highMA10=sma(highs,10),lowMA10=sma(lows,10),netMA10=sma(net,10),spyMA50=sma(spyArr,50);
-    var signals=data.map(function(d,i){
-        var sig={type:null,label:null};
-        if(i<52||!d.spy_close||!netMA10[i])return sig;
-        var spy=d.spy_close,spyPrev=data[i-20]?data[i-20].spy_close:null;
-        var spyAboveMA=spy>(spyMA50[i]||spy);
-        var nma=netMA10[i],nmaPrev5=netMA10[i-5];
-        if(d.highs>=100){sig.type="thrust";sig.label="🔥 Breadth Thrust";}
-        else if(d.lows>=100){sig.type="washout";sig.label="💀 Washout";}
-        else if(spyAboveMA&&nma>=30&&nmaPrev5!==null&&nmaPrev5<10){sig.type="buy";sig.label="🟢 BUY";}
-        else if(!spyAboveMA&&nma<=-30&&nmaPrev5!==null&&nmaPrev5>-10){sig.type="sell";sig.label="🔴 SELL";}
-        return sig;
-    });
-    return{highMA10:highMA10,lowMA10:lowMA10,netMA10:netMA10,spyMA50:spyMA50,signals:signals};
+    var highMA10=sma(highs,10),lowMA10=sma(lows,10),netMA10=sma(net,10);
+    return{highMA10:highMA10,lowMA10:lowMA10,netMA10:netMA10};
 }
 
 /* ── Stats ── */
@@ -254,25 +221,14 @@ function updateStats(){
     document.getElementById("sSigSub").textContent='Net 10MA: '+(avgNet>=0?'+':'')+avgNet.toFixed(1);
 }
 
-function updateSignalBadges(data,signals){
-    var recent=[];var seen={};
+function updateSignalBadges(){
     var last=raw[raw.length-1];var active=last?last.active||500:500;
     var highPct=last?(last.highs/active)*100:0;
     var lowPct=last?(last.lows/active)*100:0;
-    for(var i=data.length-1;i>=Math.max(0,data.length-30);i--){
-        var s=signals[i];
-        if(s&&s.type&&!seen[s.type]){seen[s.type]=true;recent.push({type:s.type,label:s.label,date:data[i].date});}
-    }
     var row=document.getElementById("signalRow");var html='';
-    if(highPct>=OB_THRESHOLD)html+='<div class="sig-badge sig-ob"><span class="dot"></span>🔺 Overbought <span class="mono" style="font-size:11px;opacity:.7">'+highPct.toFixed(1)+'%</span></div>';
-    if(lowPct>=OS_THRESHOLD)html+='<div class="sig-badge sig-os"><span class="dot"></span>🔻 Oversold <span class="mono" style="font-size:11px;opacity:.7">'+lowPct.toFixed(1)+'%</span></div>';
-    if(!recent.length&&!html){row.innerHTML='<div class="sig-badge sig-neutral"><span class="dot"></span>최근 30일 시그널 없음 — 관망</div>';return;}
-    recent.forEach(function(s){
-        var c="sig-neutral";
-        if(s.type==="buy"||s.type==="thrust")c="sig-bull";
-        else if(s.type==="sell"||s.type==="washout")c="sig-bear";
-        html+='<div class="sig-badge '+c+'"><span class="dot"></span>'+s.label+' <span class="mono" style="font-size:11px;opacity:.7">'+s.date+'</span></div>';
-    });
+    if(highPct>=OB_THRESHOLD)html+='<div class="sig-badge sig-ob"><span class="dot"></span>🔺 Overbought <span class="mono" style="font-size:11px;opacity:.7">신고 '+highPct.toFixed(1)+'%</span></div>';
+    if(lowPct>=OS_THRESHOLD)html+='<div class="sig-badge sig-os"><span class="dot"></span>🔻 Oversold <span class="mono" style="font-size:11px;opacity:.7">신저 '+lowPct.toFixed(1)+'%</span></div>';
+    if(!html)html='<div class="sig-badge sig-neutral"><span class="dot"></span>OB/OS 구간 아님 — 중립</div>';
     row.innerHTML=html;
 }
 
@@ -285,20 +241,22 @@ function yCfg(o){o=o||{};return{position:o.pos||'left',grid:{color:o.noGrid?'tra
 /* Watermark plugin */
 var wmPlugin={id:'herdvibeWM',beforeDraw:function(c){var ctx=c.ctx,ca=c.chartArea;if(!ca)return;ctx.save();ctx.font='700 28px "Plus Jakarta Sans",sans-serif';ctx.fillStyle='rgba(255,255,255,0.025)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Herdvibe.com',(ca.left+ca.right)/2,(ca.top+ca.bottom)/2);ctx.restore();}};
 
-/* OB/OS background plugin for ratio chart */
-var obosPlugin={id:'obos',beforeDraw:function(ch){
-    var ca=ch.chartArea;if(!ca)return;var ctx=ch.ctx,yScale=ch.scales.y;
+/* OB/OS vertical band plugin for SPY chart */
+var spyOBOSdata=[];
+var spyOBOSPlugin={id:'spyOBOS',beforeDraw:function(ch){
+    var ca=ch.chartArea;if(!ca||!spyOBOSdata.length)return;
+    var ctx=ch.ctx,xScale=ch.scales.x;
     ctx.save();
-    /* Overbought zone (highs ratio > OB_THRESHOLD) */
-    var yOB=yScale.getPixelForValue(OB_THRESHOLD);
-    var yTop=yScale.getPixelForValue(yScale.max);
-    if(yOB>yTop){ctx.fillStyle='rgba(255,68,102,0.06)';ctx.fillRect(ca.left,yTop,ca.right-ca.left,yOB-yTop);
-    ctx.strokeStyle='rgba(255,68,102,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(ca.left,yOB);ctx.lineTo(ca.right,yOB);ctx.stroke();}
-    /* Oversold zone (lows area - shown as negative) */
-    var yOS=yScale.getPixelForValue(-OS_THRESHOLD);
-    var yBot=yScale.getPixelForValue(yScale.min);
-    if(yOS<yBot){ctx.fillStyle='rgba(0,255,136,0.06)';ctx.fillRect(ca.left,yOS,ca.right-ca.left,yBot-yOS);
-    ctx.strokeStyle='rgba(0,255,136,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(ca.left,yOS);ctx.lineTo(ca.right,yOS);ctx.stroke();}
+    var prevOB=false,prevOS=false,obStart=null,osStart=null;
+    for(var i=0;i<spyOBOSdata.length;i++){
+        var d=spyOBOSdata[i];
+        var x=xScale.getPixelForValue(new Date(d.date).getTime());
+        var nextX=(i<spyOBOSdata.length-1)?xScale.getPixelForValue(new Date(spyOBOSdata[i+1].date).getTime()):x+2;
+        if(x<ca.left||x>ca.right)continue;
+        var w=Math.max(nextX-x,1.5);
+        if(d.ob){ctx.fillStyle='rgba(255,68,102,0.10)';ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);}
+        if(d.os){ctx.fillStyle='rgba(0,255,136,0.10)';ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);}
+    }
     ctx.restore();
 }};
 
@@ -307,24 +265,23 @@ function buildCharts(){
     var labels=data.map(function(d){return d.date;});
     xMin=labels[0];xMax=labels[labels.length-1];
     var comp=computeSignals(data);
-    updateSignalBadges(data,comp.signals);
+    updateSignalBadges();
     document.getElementById("dateRange").textContent=labels[0]+' → '+labels[labels.length-1];
-    var pts={buy:[],sell:[],thrust:[],washout:[]};
-    comp.signals.forEach(function(s,i){if(s.type&&data[i].spy_close&&pts[s.type])pts[s.type].push({x:labels[i],y:data[i].spy_close});});
 
-    /* 1. SPY Chart */
+    /* Build OB/OS data for SPY vertical bands */
+    spyOBOSdata=data.map(function(d){
+        var active=d.active||500;
+        return{date:d.date,ob:(d.highs/active)*100>=OB_THRESHOLD,os:(d.lows/active)*100>=OS_THRESHOLD};
+    });
+
+    /* 1. SPY Chart with OB/OS vertical bands */
     var c1=document.getElementById("spyChart").getContext("2d");
     if(charts.spy)charts.spy.destroy();
-    charts.spy=new Chart(c1,{plugins:[wmPlugin],data:{labels:labels,datasets:[
-        {type:'line',label:'SPY',data:data.map(function(d){return d.spy_close||null;}),borderColor:'rgba(34,211,238,.85)',borderWidth:2,pointRadius:0,tension:.2,fill:false,order:5},
-        {type:'line',label:'SPY 50MA',data:comp.spyMA50,borderColor:'rgba(136,136,160,.35)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:.2,fill:false,order:6},
-        {type:'scatter',label:'🟢 BUY',data:pts.buy,backgroundColor:'#00ff88',borderColor:'#fff',borderWidth:1.5,pointRadius:7,pointStyle:'triangle',order:1},
-        {type:'scatter',label:'🔴 SELL',data:pts.sell,backgroundColor:'#ff4466',borderColor:'#fff',borderWidth:1.5,pointRadius:7,pointStyle:'triangle',rotation:180,order:1},
-        {type:'scatter',label:'🔥 Thrust',data:pts.thrust,backgroundColor:'#ffcc00',borderColor:'#fff',borderWidth:1.5,pointRadius:8,pointStyle:'star',order:1},
-        {type:'scatter',label:'💀 Washout',data:pts.washout,backgroundColor:'#dc2626',borderColor:'#fff',borderWidth:1.5,pointRadius:8,pointStyle:'crossRot',order:1},
+    charts.spy=new Chart(c1,{type:'line',plugins:[wmPlugin,spyOBOSPlugin],data:{labels:labels,datasets:[
+        {label:'SPY',data:data.map(function(d){return d.spy_close||null;}),borderColor:'rgba(34,211,238,.85)',borderWidth:2,pointRadius:0,tension:.2,fill:false},
     ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-        plugins:{legend:{labels:{color:'#8888a0',font:{size:10},usePointStyle:true,padding:10}},tooltip:{...ttip,callbacks:{label:function(c){if(c.dataset.type==='scatter')return c.dataset.label+' @ $'+c.raw.y;return c.raw!=null?c.dataset.label+': $'+Number(c.raw).toFixed(2):null;}}}},
-        scales:{x:xCfg(currentRange),y:yCfg({c:'#22d3ee'})}}});
+        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:function(c){return c.raw!=null?'SPY: $'+Number(c.raw).toFixed(2):null;}}}},
+        scales:{x:xCfg(currentRange),y:yCfg({c:'#22d3ee'})}}}); 
 
     /* 2. Highs/Lows Bar */
     var c2=document.getElementById("mainChart").getContext("2d");
@@ -336,12 +293,22 @@ function buildCharts(){
         plugins:{legend:{labels:{color:'#8888a0',font:{size:10},usePointStyle:true,pointStyle:'rect'}},tooltip:{...ttip,callbacks:{label:function(c){return c.dataset.label+': '+Math.abs(c.raw)+'개';}}}},
         scales:{x:xCfg(currentRange),y:yCfg({fmt:function(v){return Math.abs(v);}})}}});
 
-    /* 3. Ratio Chart with OB/OS zones */
+    /* 3. Ratio Chart with threshold lines */
     var c3=document.getElementById("ratioChart").getContext("2d");
     if(charts.ratio)charts.ratio.destroy();
     var highPcts=data.map(function(d){return(d.highs/(d.active||500))*100;});
     var lowPcts=data.map(function(d){return-((d.lows/(d.active||500))*100);});
-    charts.ratio=new Chart(c3,{type:'line',plugins:[wmPlugin,obosPlugin],data:{labels:labels,datasets:[
+    var ratioThresholds={id:'ratioTH',afterDraw:function(ch){
+        var ca=ch.chartArea;if(!ca)return;var ctx=ch.ctx,yScale=ch.scales.y;ctx.save();ctx.lineWidth=1;ctx.setLineDash([4,4]);
+        var yOB=yScale.getPixelForValue(OB_THRESHOLD);
+        ctx.strokeStyle='rgba(255,68,102,0.4)';ctx.beginPath();ctx.moveTo(ca.left,yOB);ctx.lineTo(ca.right,yOB);ctx.stroke();
+        ctx.fillStyle='rgba(255,68,102,0.5)';ctx.font='10px JetBrains Mono';ctx.textAlign='right';ctx.fillText('OB '+OB_THRESHOLD+'%',ca.right-4,yOB-4);
+        var yOS=yScale.getPixelForValue(-OS_THRESHOLD);
+        ctx.strokeStyle='rgba(0,255,136,0.4)';ctx.beginPath();ctx.moveTo(ca.left,yOS);ctx.lineTo(ca.right,yOS);ctx.stroke();
+        ctx.fillStyle='rgba(0,255,136,0.5)';ctx.fillText('OS '+OS_THRESHOLD+'%',ca.right-4,yOS+12);
+        ctx.restore();
+    }};
+    charts.ratio=new Chart(c3,{type:'line',plugins:[wmPlugin,ratioThresholds],data:{labels:labels,datasets:[
         {label:'신고 %',data:highPcts,borderColor:'rgba(0,255,136,.9)',backgroundColor:'rgba(0,255,136,.06)',borderWidth:1.5,pointRadius:0,fill:true,tension:.3},
         {label:'신저 %',data:lowPcts,borderColor:'rgba(255,68,102,.9)',backgroundColor:'rgba(255,68,102,.06)',borderWidth:1.5,pointRadius:0,fill:true,tension:.3},
     ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
