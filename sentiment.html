@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>공포 & 탐욕 지수 | HerdVibe</title>
+<meta property="og:title" content="공포 & 탐욕 지수 · Market Sentiment | HerdVibe">
+<meta property="og:description" content="6개 지표 기반 종합 시장 센티먼트 대시보드">
+<meta property="og:url" content="https://herdvibe.com/109">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#000;--bg1:#07070d;--bg2:#0d0d16;--bg3:#13131f;--bg4:#1a1a2a;--bdr:#1a1a2e;--bdr2:#282845;--t1:#e8e8f0;--t2:#b0b0c8;--t3:#8888a0;--t4:#686880;--g:#00ff88;--r:#ff4466;--b:#4488ff;--y:#ffcc00;--cyan:#22d3ee;--purple:#a78bfa;--orange:#f97316}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;background:var(--bg0);color:var(--t1);line-height:1.6;min-height:100vh;overflow-x:hidden}
+a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg1)}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+.mono{font-family:'JetBrains Mono',monospace}
+.hdr{padding:12px 28px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;background:var(--bg1);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px)}
+.hdr-title{font-weight:700;font-size:18px;color:#fff}
+.page{max-width:1100px;margin:0 auto;padding:20px 28px}
+.sub-info{text-align:center;font-size:11px;color:var(--t4);margin-bottom:16px;font-family:'JetBrains Mono',monospace}
+
+/* Controls */
+.controls{display:flex;justify-content:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.rbtn{padding:5px 14px;border:1px solid var(--bdr);background:transparent;color:var(--t3);border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .15s}
+.rbtn:hover{border-color:var(--t4);color:var(--t1)}
+.rbtn.active{background:rgba(68,136,255,.15);border-color:var(--b);color:var(--b)}
+
+/* Gauge */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:20px}
+.gauge-svg{width:320px;height:180px}
+.gauge-score{font-family:'JetBrains Mono',monospace;font-size:56px;font-weight:700;margin-top:-10px;line-height:1}
+.gauge-label{font-size:18px;font-weight:700;margin-top:4px;letter-spacing:1px}
+.gauge-sub{font-size:11px;color:var(--t4);margin-top:4px;font-family:'JetBrains Mono',monospace}
+
+/* Indicator cards */
+.ind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.ind-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.ind-card .ind-name{font-size:11px;color:var(--t4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.ind-card .ind-score{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;line-height:1}
+.ind-card .ind-val{font-size:10px;color:var(--t3);margin-top:4px;font-family:'JetBrains Mono',monospace}
+.ind-card .ind-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--bg4)}
+.ind-card .ind-bar-fill{height:100%;transition:width .5s ease}
+
+/* Chart cards */
+.chart-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:11px;overflow:hidden;margin-bottom:14px}
+.chart-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--bdr)}
+.chart-head h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:600;color:var(--t1)}
+.chart-head .badge{font-size:10px;font-family:'JetBrains Mono',monospace;padding:3px 10px;border-radius:16px;background:rgba(68,136,255,.1);color:var(--b)}
+.chart-area{position:relative;padding:10px 14px}
+.chart-area canvas{width:100%!important}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* Legend */
+.legend-box{background:var(--bg2);border:1px solid var(--bdr);border-radius:11px;padding:14px 18px;margin-bottom:14px}
+.legend-box h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--t2)}
+.legend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t3);padding:4px 0}
+.legend-item .icon{font-size:14px;width:20px;text-align:center}
+
+/* Share */
+.share-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-top:20px;background:var(--bg1);border:1px solid var(--bdr);border-radius:10px}
+.share-bar-preview{font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;font-family:'JetBrains Mono',monospace}
+.share-bar-preview b{color:var(--t2);font-weight:600}
+.share-bar-buttons{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.share-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid var(--bdr2);background:var(--bg2);color:var(--t3);white-space:nowrap;font-family:inherit}
+.share-btn:hover{transform:translateY(-1px);color:var(--t1)}
+.share-btn svg{flex-shrink:0}
+.share-btn--x:hover{border-color:#fff;color:#fff;background:var(--bg3)}
+.share-btn--kakao:hover{border-color:#FEE500;color:#191919;background:#FEE500}
+.share-btn--tg:hover{border-color:#26A5E4;color:#fff;background:rgba(38,165,228,.15)}
+.share-btn--ig:hover{border-color:#E4405F;color:#fff;background:rgba(228,64,95,.15)}
+.share-btn--copy:hover{border-color:var(--g);color:var(--g);background:rgba(0,255,136,.07)}
+.inline-share{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;border-top:1px solid var(--bdr)}
+.inline-share .lbl{font-size:10px;color:var(--t4);margin-right:4px}
+.inline-share .share-btn{padding:6px 10px}
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999}
+.toast{background:var(--bg4);border:1px solid var(--bdr2);border-left:3px solid var(--g);border-radius:8px;padding:10px 18px;font-size:12px;color:var(--t1);box-shadow:0 8px 32px rgba(0,0,0,.7);animation:toastIn .3s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--t4);gap:14px}
+.spinner{width:32px;height:32px;border:3px solid var(--bdr);border-top-color:var(--b);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{text-align:center;padding:16px 0;font-size:10px;color:var(--t4)}
+
+@media(max-width:768px){
+.page{padding:12px 16px}.hdr{padding:8px 16px}.hdr-title{font-size:15px}
+.ind-grid{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}
+.ind-card .ind-score{font-size:22px}
+.gauge-svg{width:260px;height:150px}.gauge-score{font-size:44px}
+.share-bar{flex-direction:column;gap:10px;align-items:stretch}
+.share-bar-preview{max-width:100%}
+.share-bar-buttons{justify-content:center;flex-wrap:wrap}
+.share-btn .lbl{display:none}.share-btn{padding:8px 10px}
+.inline-share .lbl{display:none}
+.chart-area{padding:8px 8px}
+}
+@media(max-width:520px){
+.page{padding:10px 10px}.ind-grid{grid-template-columns:repeat(2,1fr)}
+.gauge-svg{width:220px;height:130px}.gauge-score{font-size:36px}.gauge-label{font-size:15px}
+}
+</style>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js" crossorigin="anonymous" async></script>
+</head>
+<body>
+<div class="hdr"><span class="hdr-title">공포 & 탐욕 지수 · Market Sentiment</span></div>
+<div class="page">
+
+<div class="sub-info" id="updateInfo">데이터 로딩 중...</div>
+
+<div class="controls">
+<button class="rbtn" data-range="90">3M</button>
+<button class="rbtn active" data-range="365">1Y</button>
+<button class="rbtn" data-range="730">2Y</button>
+</div>
+
+<!-- Gauge -->
+<div class="gauge-wrap">
+<svg class="gauge-svg" viewBox="0 0 320 180" id="gaugeSvg">
+  <defs>
+    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff4466"/>
+      <stop offset="25%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#ffcc00"/>
+      <stop offset="75%" stop-color="#88cc44"/>
+      <stop offset="100%" stop-color="#00ff88"/>
+    </linearGradient>
+  </defs>
+  <!-- Arc background -->
+  <path d="M 30 160 A 130 130 0 0 1 290 160" fill="none" stroke="#1a1a2e" stroke-width="18" stroke-linecap="round"/>
+  <!-- Arc fill -->
+  <path d="M 30 160 A 130 130 0 0 1 290 160" fill="none" stroke="url(#gaugeGrad)" stroke-width="18" stroke-linecap="round" opacity="0.3"/>
+  <!-- Needle -->
+  <line id="gaugeNeedle" x1="160" y1="160" x2="160" y2="40" stroke="#e8e8f0" stroke-width="2.5" stroke-linecap="round" transform="rotate(-90,160,160)"/>
+  <circle cx="160" cy="160" r="6" fill="#e8e8f0"/>
+  <!-- Labels -->
+  <text x="25" y="175" fill="#ff4466" font-size="10" font-family="JetBrains Mono" font-weight="600">극단적 공포</text>
+  <text x="235" y="175" fill="#00ff88" font-size="10" font-family="JetBrains Mono" font-weight="600">극단적 탐욕</text>
+</svg>
+<div class="gauge-score mono" id="gaugeScore">—</div>
+<div class="gauge-label" id="gaugeLabel">로딩 중...</div>
+<div class="gauge-sub" id="gaugeSub"></div>
+</div>
+
+<!-- 6 Indicator Cards -->
+<div class="ind-grid">
+<div class="ind-card" id="cardVix">
+  <div class="ind-name">VIX 변동성</div>
+  <div class="ind-score mono" id="vixScore">—</div>
+  <div class="ind-val" id="vixVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="vixBar"></div></div>
+</div>
+<div class="ind-card" id="cardMomentum">
+  <div class="ind-name">시장 모멘텀</div>
+  <div class="ind-score mono" id="momScore">—</div>
+  <div class="ind-val" id="momVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="momBar"></div></div>
+</div>
+<div class="ind-card" id="cardHighlow">
+  <div class="ind-name">52주 신고/신저</div>
+  <div class="ind-score mono" id="hlScore">—</div>
+  <div class="ind-val" id="hlVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="hlBar"></div></div>
+</div>
+<div class="ind-card" id="cardBreadth">
+  <div class="ind-name">200일선 위 비율</div>
+  <div class="ind-score mono" id="brScore">—</div>
+  <div class="ind-val" id="brVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="brBar"></div></div>
+</div>
+<div class="ind-card" id="cardSafe">
+  <div class="ind-name">Safe Haven 수요</div>
+  <div class="ind-score mono" id="shScore">—</div>
+  <div class="ind-val" id="shVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="shBar"></div></div>
+</div>
+<div class="ind-card" id="cardJunk">
+  <div class="ind-name">정크본드 스프레드</div>
+  <div class="ind-score mono" id="jbScore">—</div>
+  <div class="ind-val" id="jbVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="jbBar"></div></div>
+</div>
+</div>
+
+<div id="loadingEl" class="loading"><div class="spinner"></div><div>데이터를 불러오는 중...</div></div>
+<div id="chartsEl" style="display:none;">
+
+<!-- Composite history -->
+<div class="chart-card">
+<div class="chart-head"><h3>종합 공포 & 탐욕 지수 히스토리</h3><span class="badge" id="dateRange">—</span></div>
+<div class="chart-area" style="height:300px;"><canvas id="compositeChart"></canvas></div>
+<div class="inline-share" id="inlineShare1"></div>
+</div>
+
+<!-- Individual indicator charts -->
+<div class="grid2">
+<div class="chart-card">
+<div class="chart-head"><h3>VIX 변동성 지수</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="vixChart"></canvas></div>
+</div>
+<div class="chart-card">
+<div class="chart-head"><h3>시장 모멘텀 (SPY vs 125MA)</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="momChart"></canvas></div>
+</div>
+</div>
+
+<div class="grid2">
+<div class="chart-card">
+<div class="chart-head"><h3>52주 신고/신저 Net %</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="hlChart"></canvas></div>
+</div>
+<div class="chart-card">
+<div class="chart-head"><h3>200일선 위 종목 비율</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="brChart"></canvas></div>
+</div>
+</div>
+
+<div class="grid2">
+<div class="chart-card">
+<div class="chart-head"><h3>Safe Haven 수요 (SPY−TLT)</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="shChart"></canvas></div>
+</div>
+<div class="chart-card">
+<div class="chart-head"><h3>정크본드 스프레드 (HYG/LQD)</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="jbChart"></canvas></div>
+</div>
+</div>
+
+<div class="legend-box">
+<h3>지표 해석 가이드</h3>
+<div class="legend-grid">
+<div class="legend-item"><span class="icon">📊</span><strong>VIX</strong> — 변동성 지수. 높을수록 공포, 낮을수록 탐욕</div>
+<div class="legend-item"><span class="icon">📈</span><strong>모멘텀</strong> — SPY가 125일선 위면 탐욕, 아래면 공포</div>
+<div class="legend-item"><span class="icon">🔺</span><strong>신고/신저</strong> — 신고 많으면 탐욕, 신저 많으면 공포</div>
+<div class="legend-item"><span class="icon">📉</span><strong>200일선</strong> — 위에 있는 종목 많으면 탐욕, 적으면 공포</div>
+<div class="legend-item"><span class="icon">🛡</span><strong>Safe Haven</strong> — 채권 선호 시 공포, 주식 선호 시 탐욕</div>
+<div class="legend-item"><span class="icon">💰</span><strong>정크본드</strong> — 하이일드 선호 시 탐욕, 안전채권 선호 시 공포</div>
+</div>
+</div>
+
+</div>
+
+<div id="shareBarWrap"></div>
+<div class="footer">Data: yfinance · VIX · SPY · TLT · HYG · LQD · S&P 500 전종목 · Updated daily · <span style="color:var(--t2)">HerdVibe</span></div>
+</div>
+
+<script>
+var SHARE_URL='https://herdvibe.com/109';
+var KAKAO_KEY='a43ed7b39fac35458f4f9df925a279b5';
+var DATA_URL='./data/sentiment.json';
+
+var raw=[],currentRange=365,charts={};
+
+/* ── Helpers ── */
+function getFiltered(){var c=new Date();c.setDate(c.getDate()-currentRange);var cs=c.toISOString().slice(0,10);return raw.filter(function(d){return d.date>=cs;});}
+
+function scoreColor(s){
+    if(s>=80)return'var(--g)';
+    if(s>=60)return'#88cc44';
+    if(s>=40)return'var(--y)';
+    if(s>=20)return'var(--orange)';
+    return'var(--r)';
+}
+function labelKo(lbl){
+    var m={'Extreme Greed':'극단적 탐욕','Greed':'탐욕','Neutral':'중립','Fear':'공포','Extreme Fear':'극단적 공포'};
+    return m[lbl]||lbl;
+}
+
+/* ── Gauge ── */
+function updateGauge(score,label){
+    var el=document.getElementById('gaugeScore');
+    el.textContent=Math.round(score);
+    el.style.color=scoreColor(score);
+
+    var lbl=document.getElementById('gaugeLabel');
+    lbl.textContent=labelKo(label);
+    lbl.style.color=scoreColor(score);
+
+    // Needle rotation: 0=left(-90deg), 100=right(+90deg)
+    var angle=-90+(score/100)*180;
+    document.getElementById('gaugeNeedle').setAttribute('transform','rotate('+angle+',160,160)');
+}
+
+/* ── Indicator Cards ── */
+function updateCard(prefix,score,valText){
+    var el=document.getElementById(prefix+'Score');
+    el.textContent=Math.round(score);
+    el.style.color=scoreColor(score);
+    document.getElementById(prefix+'Val').textContent=valText||'';
+    var bar=document.getElementById(prefix+'Bar');
+    bar.style.width=score+'%';
+    bar.style.background=scoreColor(score);
+}
+
+function updateIndicators(d){
+    var ind=d.indicators||{};
+    if(ind.vix) updateCard('vix',ind.vix.score,'VIX: '+ind.vix.value);
+    if(ind.momentum) updateCard('mom',ind.momentum.score,'SPY vs 125MA: '+(ind.momentum.value>=0?'+':'')+ind.momentum.value+'%');
+    if(ind.highlow) updateCard('hl',ind.highlow.score,'Net: '+(ind.highlow.net_pct>=0?'+':'')+ind.highlow.net_pct+'%');
+    if(ind.breadth) updateCard('br',ind.breadth.score,ind.breadth.pct+'% ('+ind.breadth.above200+'/'+ind.breadth.total+')');
+    if(ind.safe_haven) updateCard('sh',ind.safe_haven.score,'SPY−TLT 20일: '+(ind.safe_haven.diff>=0?'+':'')+ind.safe_haven.diff+'%');
+    if(ind.junkbond) updateCard('jb',ind.junkbond.score,'HYG/LQD: '+ind.junkbond.ratio);
+}
+
+/* ── Chart Config ── */
+var ttip={backgroundColor:'rgba(7,7,13,.95)',titleColor:'#e8e8f0',bodyColor:'#8888a0',borderColor:'#1a1a2e',borderWidth:1,cornerRadius:8,padding:12,titleFont:{family:"'JetBrains Mono',monospace",size:10},bodyFont:{family:"'Noto Sans KR',sans-serif",size:11}};
+var xMin=null,xMax=null;
+function xCfg(r){return{type:'time',min:xMin,max:xMax,time:{unit:r<=180?'week':r<=730?'month':'quarter'},grid:{color:'rgba(26,26,46,.6)'},ticks:{color:'#686880',font:{family:"'JetBrains Mono',monospace",size:10},maxRotation:0}};}
+function yCfg(o){o=o||{};return{position:o.pos||'left',min:o.min,max:o.max,grid:{color:o.noGrid?'transparent':'rgba(26,26,46,.6)'},ticks:{color:o.c||'#686880',font:{family:"'JetBrains Mono',monospace",size:10},callback:o.fmt||function(v){return v;}}};}
+
+/* Watermark */
+var wmPlugin={id:'herdvibeWM',beforeDraw:function(c){var ctx=c.ctx,ca=c.chartArea;if(!ca)return;ctx.save();ctx.font='700 28px "Plus Jakarta Sans",sans-serif';ctx.fillStyle='rgba(255,255,255,0.025)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Herdvibe.com',(ca.left+ca.right)/2,(ca.top+ca.bottom)/2);ctx.restore();}};
+
+/* Zone band plugin for composite chart */
+var zoneBands={id:'zoneBands',beforeDraw:function(ch){
+    var ca=ch.chartArea;if(!ca)return;var ctx=ch.ctx,yScale=ch.scales.y;
+    var zones=[
+        {min:0,max:20,color:'rgba(255,68,102,0.06)'},
+        {min:20,max:40,color:'rgba(249,115,22,0.04)'},
+        {min:60,max:80,color:'rgba(136,204,68,0.04)'},
+        {min:80,max:100,color:'rgba(0,255,136,0.06)'}
+    ];
+    ctx.save();
+    for(var i=0;i<zones.length;i++){
+        var z=zones[i];
+        var yTop=yScale.getPixelForValue(z.max);
+        var yBot=yScale.getPixelForValue(z.min);
+        ctx.fillStyle=z.color;
+        ctx.fillRect(ca.left,yTop,ca.right-ca.left,yBot-yTop);
+    }
+    // 50 line
+    var y50=yScale.getPixelForValue(50);
+    ctx.strokeStyle='rgba(255,204,0,0.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(ca.left,y50);ctx.lineTo(ca.right,y50);ctx.stroke();
+    ctx.restore();
+}};
+
+function buildCharts(){
+    var data=getFiltered();if(!data.length)return;
+    var labels=data.map(function(d){return d.date;});
+    xMin=labels[0];xMax=labels[labels.length-1];
+    document.getElementById('dateRange').textContent=labels[0]+' → '+labels[labels.length-1];
+
+    /* 1. Composite */
+    var c1=document.getElementById('compositeChart').getContext('2d');
+    if(charts.comp)charts.comp.destroy();
+    var compScores=data.map(function(d){return d.composite;});
+    var compColors=data.map(function(d){
+        var s=d.composite;
+        if(s>=80)return'rgba(0,255,136,0.8)';
+        if(s>=60)return'rgba(136,204,68,0.8)';
+        if(s>=40)return'rgba(255,204,0,0.8)';
+        if(s>=20)return'rgba(249,115,22,0.8)';
+        return'rgba(255,68,102,0.8)';
+    });
+    charts.comp=new Chart(c1,{type:'line',plugins:[wmPlugin,zoneBands],data:{labels:labels,datasets:[
+        {label:'종합 점수',data:compScores,borderColor:function(ctx){var i=ctx.dataIndex;return compColors[i]||'#4488ff';},borderWidth:2,pointRadius:0,tension:.3,fill:false,segment:{borderColor:function(ctx){return compColors[ctx.p0DataIndex]||'#4488ff';}}},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:function(c){var d=data[c.dataIndex];return'종합: '+d.composite+' ('+labelKo(d.label)+')';}}}},
+        scales:{x:xCfg(currentRange),y:yCfg({min:0,max:100,fmt:function(v){return v;}})}
+    }});
+
+    /* Helper for sub-charts */
+    function subChart(id,label,key,color,fmtVal){
+        var ctx=document.getElementById(id).getContext('2d');
+        if(charts[id])charts[id].destroy();
+        var vals=data.map(function(d){
+            var ind=d.indicators||{};
+            return ind[key]?ind[key].score:null;
+        });
+        charts[id]=new Chart(ctx,{type:'line',plugins:[wmPlugin],data:{labels:labels,datasets:[
+            {label:label,data:vals,borderColor:color,borderWidth:1.5,pointRadius:0,tension:.3,fill:{target:'origin',above:color.replace(')',',0.06)').replace('rgb','rgba')}}
+        ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+            plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:function(c){
+                var d=data[c.dataIndex];var ind=(d.indicators||{})[key];
+                if(!ind)return label+': —';
+                return label+': '+ind.score+(fmtVal?(' · '+fmtVal(ind)):'');
+            }}}},
+            scales:{x:xCfg(currentRange),y:yCfg({min:0,max:100})}
+        }});
+    }
+
+    /* 2-7. Sub-charts */
+    subChart('vixChart','VIX','vix','rgb(255,68,102)',function(d){return'VIX: '+d.value;});
+    subChart('momChart','모멘텀','momentum','rgb(34,211,238)',function(d){return(d.value>=0?'+':'')+d.value+'%';});
+    subChart('hlChart','신고/신저','highlow','rgb(0,255,136)',function(d){return'Net: '+(d.net_pct>=0?'+':'')+d.net_pct+'%';});
+    subChart('brChart','200일선 위','breadth','rgb(167,139,250)',function(d){return d.pct+'%';});
+    subChart('shChart','Safe Haven','safe_haven','rgb(68,136,255)',function(d){return'차이: '+(d.diff>=0?'+':'')+d.diff+'%';});
+    subChart('jbChart','정크본드','junkbond','rgb(249,115,22)',function(d){return'비율: '+d.ratio;});
+}
+
+/* ── Init ── */
+async function init(){
+    try{
+        var resp=await fetch(DATA_URL);if(!resp.ok)throw new Error('HTTP '+resp.status);
+        var json=await resp.json();raw=json.data||[];
+        if(!raw.length)throw new Error('No data');
+
+        var last=raw[raw.length-1];
+        document.getElementById('updateInfo').textContent='마지막: '+last.date+' · '+raw.length.toLocaleString()+'일 · 지표 '+last.count+'개';
+
+        updateGauge(last.composite,last.label);
+        updateIndicators(last);
+        document.getElementById('gaugeSub').textContent=last.date+' 기준 · 6개 지표 평균';
+
+        document.getElementById('loadingEl').style.display='none';
+        document.getElementById('chartsEl').style.display='block';
+        buildCharts();
+    }catch(e){
+        document.getElementById('loadingEl').innerHTML='<div style="color:var(--r);text-align:center;padding:40px;">❌ '+e.message+'<br><small>fetch_sentiment.py 실행 필요</small></div>';
+    }
+}
+
+document.querySelectorAll('.rbtn').forEach(function(b){b.addEventListener('click',function(){
+    document.querySelectorAll('.rbtn').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');currentRange=+b.dataset.range;buildCharts();
+});});
+
+init();
+
+/* ── Share ── */
+function ensureKakao(){try{if(typeof Kakao!=='undefined'&&!Kakao.isInitialized())Kakao.init(KAKAO_KEY);return typeof Kakao!=='undefined'&&Kakao.isInitialized();}catch(e){return false;}}
+function copyToClipboard(t){if(window.parent!==window){window.parent.postMessage({type:'copy',text:t},'*')}if(navigator.clipboard&&navigator.clipboard.writeText&&window.isSecureContext){navigator.clipboard.writeText(t).catch(function(){_fbCopy(t)})}else{_fbCopy(t)}}function _fbCopy(t){var a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;left:-9999px;top:-9999px;opacity:0';document.body.appendChild(a);a.focus();a.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(a)}
+function flashCopied(btn){if(!btn)return;var orig=btn.innerHTML;btn.style.background='#22c55e';btn.style.color='#fff';btn.style.borderColor='#22c55e';btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';setTimeout(function(){btn.style.background='';btn.style.color='';btn.style.borderColor='';btn.innerHTML=orig;},2000);}
+function kakaoShare(title){if(!ensureKakao()){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');return;}try{Kakao.Share.sendDefault({objectType:'feed',content:{title:title||document.title,description:'6개 지표 기반 종합 시장 센티먼트',imageUrl:'',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}},buttons:[{title:'대시보드 보기',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}}]});}catch(e){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');}}
+function showToast(msg){var w=document.querySelector('.toast-wrap');if(!w){w=document.createElement('div');w.className='toast-wrap';document.body.appendChild(w);}var t=document.createElement('div');t.className='toast';t.textContent=msg;w.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(12px)';t.style.transition='.3s';setTimeout(function(){t.remove();},300);},3000);}
+function doShare(p,btn){var title='공포 & 탐욕 지수 · Market Sentiment — herdvibe.com';switch(p){case'twitter':window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(title)+'&url='+encodeURIComponent(SHARE_URL),'_blank');break;case'telegram':window.open('https://t.me/share/url?url='+encodeURIComponent(SHARE_URL)+'&text='+encodeURIComponent(title),'_blank');break;case'kakao':kakaoShare(title);break;case'instagram':copyToClipboard(SHARE_URL);flashCopied(btn);showToast('링크 복사완료! 인스타그램에 붙여넣기 하세요');break;case'link':copyToClipboard(SHARE_URL);flashCopied(btn);showToast('링크가 복사되었습니다');break;}}
+var xI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
+var kI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.477 3 2 6.463 2 10.691c0 2.724 1.8 5.112 4.508 6.458l-1.148 4.265a.5.5 0 0 0 .764.533l4.94-3.26c.304.02.612.03.936.03 5.523 0 10-3.462 10-7.735C22 6.463 17.523 3 12 3z"/></svg>';
+var tI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
+var iI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>';
+var lI='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+function makeInlineShare(el){if(!el)return;el.innerHTML='<span class="lbl">공유</span><button class="share-btn share-btn--x" onclick="doShare(\'twitter\',this)">'+xI+'</button><button class="share-btn share-btn--kakao" onclick="doShare(\'kakao\',this)">'+kI+'</button><button class="share-btn share-btn--tg" onclick="doShare(\'telegram\',this)">'+tI+'</button><button class="share-btn share-btn--copy" onclick="doShare(\'link\',this)">'+lI+'</button>';}
+function makeShareBar(el){if(!el)return;el.innerHTML='<div class="share-bar"><div class="share-bar-preview"><b>공포 & 탐욕 지수</b> — herdvibe.com</div><div class="share-bar-buttons"><button class="share-btn share-btn--x" onclick="doShare(\'twitter\',this)">'+xI+'<span class="lbl">트위터</span></button><button class="share-btn share-btn--kakao" onclick="doShare(\'kakao\',this)">'+kI+'<span class="lbl">카카오톡</span></button><button class="share-btn share-btn--tg" onclick="doShare(\'telegram\',this)">'+tI+'<span class="lbl">텔레그램</span></button><button class="share-btn share-btn--ig" onclick="doShare(\'instagram\',this)">'+iI+'<span class="lbl">인스타</span></button><button class="share-btn share-btn--copy" onclick="doShare(\'link\',this)">'+lI+'<span class="lbl">링크 복사</span></button></div></div>';}
+makeInlineShare(document.getElementById('inlineShare1'));
+makeShareBar(document.getElementById('shareBarWrap'));
+
+/* ── iframe resize ── */
+(function(){var lastH=0;setInterval(function(){if(window.parent!==window){var h=document.body.scrollHeight;if(h!==lastH){lastH=h;window.parent.postMessage({type:'resize',height:h},'*');}}},300);})();
+</script>
+</body>
+</html>
