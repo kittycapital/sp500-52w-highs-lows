@@ -165,8 +165,8 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 <div class="legend-box">
 <h3>📖 시그널 해석 가이드</h3>
 <div class="legend-grid">
-<div class="legend-item"><span class="icon">🔺</span><strong>Overbought</strong> — 신고 비율 20%↑: 과열 구간. SPY 차트에 빨간 세로 밴드 표시.</div>
-<div class="legend-item"><span class="icon">🔻</span><strong>Oversold</strong> — 신저 비율 10%↑: 공포 구간. SPY 차트에 초록 세로 밴드 표시.</div>
+<div class="legend-item"><span class="icon">🔺</span><strong>Overbought</strong> — 신고 15%↑ 연한 빨강, 20%↑ 진한 빨강. 비율이 높을수록 과열.</div>
+<div class="legend-item"><span class="icon">🔻</span><strong>Oversold</strong> — 신저 10%↑ 초록 밴드. 공포 구간, 반등 가능성 주시.</div>
 </div>
 </div>
 
@@ -180,7 +180,8 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 var SHARE_URL='https://herdvibe.com/105';
 var KAKAO_KEY='a43ed7b39fac35458f4f9df925a279b5';
 var DATA_URL='./data/sp500_52w_highs_lows.json';
-var OB_THRESHOLD=20;
+var OB_THRESHOLD1=15;
+var OB_THRESHOLD2=20;
 var OS_THRESHOLD=10;
 
 var raw=[],currentRange=1825,charts={};
@@ -226,7 +227,8 @@ function updateSignalBadges(){
     var highPct=last?(last.highs/active)*100:0;
     var lowPct=last?(last.lows/active)*100:0;
     var row=document.getElementById("signalRow");var html='';
-    if(highPct>=OB_THRESHOLD)html+='<div class="sig-badge sig-ob"><span class="dot"></span>🔺 Overbought <span class="mono" style="font-size:11px;opacity:.7">신고 '+highPct.toFixed(1)+'%</span></div>';
+    if(highPct>=OB_THRESHOLD2)html+='<div class="sig-badge sig-ob"><span class="dot"></span>🔺 Overbought <span class="mono" style="font-size:11px;opacity:.7">신고 '+highPct.toFixed(1)+'%</span></div>';
+    else if(highPct>=OB_THRESHOLD1)html+='<div class="sig-badge sig-ob" style="opacity:.7"><span class="dot"></span>🔺 OB 주의 <span class="mono" style="font-size:11px;opacity:.7">신고 '+highPct.toFixed(1)+'%</span></div>';
     if(lowPct>=OS_THRESHOLD)html+='<div class="sig-badge sig-os"><span class="dot"></span>🔻 Oversold <span class="mono" style="font-size:11px;opacity:.7">신저 '+lowPct.toFixed(1)+'%</span></div>';
     if(!html)html='<div class="sig-badge sig-neutral"><span class="dot"></span>OB/OS 구간 아님 — 중립</div>';
     row.innerHTML=html;
@@ -247,15 +249,20 @@ var spyOBOSPlugin={id:'spyOBOS',beforeDraw:function(ch){
     var ca=ch.chartArea;if(!ca||!spyOBOSdata.length)return;
     var ctx=ch.ctx,xScale=ch.scales.x;
     ctx.save();
-    var prevOB=false,prevOS=false,obStart=null,osStart=null;
     for(var i=0;i<spyOBOSdata.length;i++){
         var d=spyOBOSdata[i];
         var x=xScale.getPixelForValue(new Date(d.date).getTime());
         var nextX=(i<spyOBOSdata.length-1)?xScale.getPixelForValue(new Date(spyOBOSdata[i+1].date).getTime()):x+2;
         if(x<ca.left||x>ca.right)continue;
         var w=Math.max(nextX-x,1.5);
-        if(d.ob){ctx.fillStyle='rgba(255,68,102,0.10)';ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);}
-        if(d.os){ctx.fillStyle='rgba(0,255,136,0.10)';ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);}
+        if(d.highPct>=OB_THRESHOLD1){
+            var alpha=d.highPct>=OB_THRESHOLD2?0.18:0.08;
+            ctx.fillStyle='rgba(255,68,102,'+alpha+')';ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);
+        }
+        if(d.lowPct>=OS_THRESHOLD){
+            var alpha2=d.lowPct>=20?0.18:0.08;
+            ctx.fillStyle='rgba(0,255,136,'+alpha2+')';ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);
+        }
     }
     ctx.restore();
 }};
@@ -271,7 +278,7 @@ function buildCharts(){
     /* Build OB/OS data for SPY vertical bands */
     spyOBOSdata=data.map(function(d){
         var active=d.active||500;
-        return{date:d.date,ob:(d.highs/active)*100>=OB_THRESHOLD,os:(d.lows/active)*100>=OS_THRESHOLD};
+        return{date:d.date,highPct:(d.highs/active)*100,lowPct:(d.lows/active)*100};
     });
 
     /* 1. SPY Chart with OB/OS vertical bands */
@@ -300,9 +307,12 @@ function buildCharts(){
     var lowPcts=data.map(function(d){return-((d.lows/(d.active||500))*100);});
     var ratioThresholds={id:'ratioTH',afterDraw:function(ch){
         var ca=ch.chartArea;if(!ca)return;var ctx=ch.ctx,yScale=ch.scales.y;ctx.save();ctx.lineWidth=1;ctx.setLineDash([4,4]);
-        var yOB=yScale.getPixelForValue(OB_THRESHOLD);
-        ctx.strokeStyle='rgba(255,68,102,0.4)';ctx.beginPath();ctx.moveTo(ca.left,yOB);ctx.lineTo(ca.right,yOB);ctx.stroke();
-        ctx.fillStyle='rgba(255,68,102,0.5)';ctx.font='10px JetBrains Mono';ctx.textAlign='right';ctx.fillText('OB '+OB_THRESHOLD+'%',ca.right-4,yOB-4);
+        var yOB1=yScale.getPixelForValue(OB_THRESHOLD1);
+        ctx.strokeStyle='rgba(255,68,102,0.25)';ctx.beginPath();ctx.moveTo(ca.left,yOB1);ctx.lineTo(ca.right,yOB1);ctx.stroke();
+        ctx.fillStyle='rgba(255,68,102,0.4)';ctx.font='10px JetBrains Mono';ctx.textAlign='right';ctx.fillText(OB_THRESHOLD1+'%',ca.right-4,yOB1-4);
+        var yOB2=yScale.getPixelForValue(OB_THRESHOLD2);
+        ctx.strokeStyle='rgba(255,68,102,0.5)';ctx.beginPath();ctx.moveTo(ca.left,yOB2);ctx.lineTo(ca.right,yOB2);ctx.stroke();
+        ctx.fillStyle='rgba(255,68,102,0.6)';ctx.fillText('OB '+OB_THRESHOLD2+'%',ca.right-4,yOB2-4);
         var yOS=yScale.getPixelForValue(-OS_THRESHOLD);
         ctx.strokeStyle='rgba(0,255,136,0.4)';ctx.beginPath();ctx.moveTo(ca.left,yOS);ctx.lineTo(ca.right,yOS);ctx.stroke();
         ctx.fillStyle='rgba(0,255,136,0.5)';ctx.fillText('OS '+OS_THRESHOLD+'%',ca.right-4,yOS+12);
