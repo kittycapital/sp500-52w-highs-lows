@@ -1,403 +1,416 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S&P 500 52주 신고/신저 + SPY 시그널 대시보드</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #0a0e17;
-            --bg-card: #111827;
-            --bg-card-alt: #0f172a;
-            --border: #1e293b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --green: #22c55e;
-            --green-dim: rgba(34,197,94,0.12);
-            --red: #ef4444;
-            --red-dim: rgba(239,68,68,0.12);
-            --blue: #3b82f6;
-            --blue-dim: rgba(59,130,246,0.12);
-            --yellow: #f59e0b;
-            --yellow-dim: rgba(245,158,11,0.12);
-            --purple: #a78bfa;
-            --cyan: #22d3ee;
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: 'Noto Sans KR', -apple-system, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-        }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        .container { max-width: 1440px; margin: 0 auto; padding: 24px 20px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>S&P 500 · 52주 신고/신저 | HerdVibe</title>
+<meta property="og:title" content="S&P 500 · 52주 신고/신저 | HerdVibe">
+<meta property="og:description" content="S&P 500 종목 52주 신고/신저 + OB/OS 시그널">
+<meta property="og:url" content="https://herdvibe.com/105">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#000;--bg1:#07070d;--bg2:#0d0d16;--bg3:#13131f;--bg4:#1a1a2a;--bdr:#1a1a2e;--bdr2:#282845;--t1:#e8e8f0;--t2:#b0b0c8;--t3:#8888a0;--t4:#686880;--g:#00ff88;--r:#ff4466;--b:#4488ff;--y:#ffcc00;--cyan:#22d3ee;--purple:#a78bfa;--ob:rgba(255,68,102,.06);--os:rgba(0,255,136,.06)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;background:var(--bg0);color:var(--t1);line-height:1.6;min-height:100vh;overflow-x:hidden}
+a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg1)}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+.mono{font-family:'JetBrains Mono',monospace}
+.hdr{padding:12px 28px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;background:var(--bg1);position:sticky;top:0;z-index:100;backdrop-filter:blur(20px)}
+.hdr-title{font-weight:700;font-size:18px;color:#fff}
+.page{max-width:1100px;margin:0 auto;padding:20px 28px}
+.sub-info{text-align:center;font-size:11px;color:var(--t4);margin-bottom:16px;font-family:'JetBrains Mono',monospace}
+.nav-link{display:flex;justify-content:center;margin-bottom:16px;gap:8px}
+.nav-link a{font-size:12px;padding:6px 16px;border:1px solid var(--bdr);border-radius:8px;color:var(--t3);transition:all .2s;font-weight:500}
+.nav-link a:hover{border-color:var(--b);color:var(--b)}
+.nav-link a.active{background:var(--b);border-color:var(--b);color:#fff}
 
-        /* Header */
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; }
-        .header h1 { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; background: linear-gradient(135deg, #f1f5f9 30%, #64748b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-        .controls { display: flex; gap: 6px; flex-wrap: wrap; }
-        .rbtn { padding: 5px 14px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); border-radius: 6px; font-size: 12px; font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all .15s; }
-        .rbtn:hover { border-color: var(--text-muted); color: var(--text-primary); }
-        .rbtn.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+/* Controls */
+.controls{display:flex;justify-content:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.rbtn{padding:5px 14px;border:1px solid var(--bdr);background:transparent;color:var(--t3);border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .15s}
+.rbtn:hover{border-color:var(--t4);color:var(--t1)}
+.rbtn.active{background:rgba(68,136,255,.15);border-color:var(--b);color:var(--b)}
 
-        /* Signal Badges */
-        .signal-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .sig-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; border: 1px solid; }
-        .sig-badge .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .sig-bull { background: var(--green-dim); border-color: rgba(34,197,94,.3); color: var(--green); }
-        .sig-bull .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
-        .sig-bear { background: var(--red-dim); border-color: rgba(239,68,68,.3); color: var(--red); }
-        .sig-bear .dot { background: var(--red); box-shadow: 0 0 8px var(--red); }
-        .sig-neutral { background: var(--blue-dim); border-color: rgba(59,130,246,.3); color: var(--blue); }
-        .sig-neutral .dot { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
-        .sig-warn { background: var(--yellow-dim); border-color: rgba(245,158,11,.3); color: var(--yellow); }
-        .sig-warn .dot { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+/* Signal Badges */
+.signal-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.sig-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid}
+.sig-badge .dot{width:8px;height:8px;border-radius:50%}
+.sig-bull{background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.25);color:var(--g)}
+.sig-bull .dot{background:var(--g);box-shadow:0 0 6px var(--g)}
+.sig-bear{background:rgba(255,68,102,.08);border-color:rgba(255,68,102,.25);color:var(--r)}
+.sig-bear .dot{background:var(--r);box-shadow:0 0 6px var(--r)}
+.sig-neutral{background:rgba(68,136,255,.08);border-color:rgba(68,136,255,.25);color:var(--b)}
+.sig-neutral .dot{background:var(--b);box-shadow:0 0 6px var(--b)}
+.sig-warn{background:rgba(255,204,0,.08);border-color:rgba(255,204,0,.25);color:var(--y)}
+.sig-warn .dot{background:var(--y);box-shadow:0 0 6px var(--y)}
+.sig-ob{background:rgba(255,68,102,.1);border-color:rgba(255,68,102,.3);color:var(--r)}
+.sig-ob .dot{background:var(--r);box-shadow:0 0 6px var(--r)}
+.sig-os{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.3);color:var(--g)}
+.sig-os .dot{background:var(--g);box-shadow:0 0 6px var(--g)}
 
-        /* Stats */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 20px; }
-        .sc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-        .sc .lb { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-        .sc .vl { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 600; line-height: 1; }
-        .sc .sm { font-size: 11px; color: var(--text-muted); margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
-        .c-green { color: var(--green); } .c-red { color: var(--red); }
-        .c-blue { color: var(--blue); } .c-yellow { color: var(--yellow); }
-        .c-purple { color: var(--purple); } .c-cyan { color: var(--cyan); }
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:8px;margin-bottom:16px}
+.sc{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px}
+.sc .lb{font-size:10px;color:var(--t4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sc .vl{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;line-height:1}
+.sc .sm{font-size:10px;color:var(--t4);margin-top:4px;font-family:'JetBrains Mono',monospace}
+.c-green{color:var(--g)}.c-red{color:var(--r)}.c-blue{color:var(--b)}.c-yellow{color:var(--y)}.c-purple{color:var(--purple)}.c-cyan{color:var(--cyan)}
 
-        /* Panels */
-        .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin-bottom: 14px; }
-        .panel-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .panel-hdr .title { font-size: 15px; font-weight: 700; }
-        .panel-hdr .badge { font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 10px; border-radius: 20px; background: var(--blue-dim); color: var(--blue); }
-        .cw { position: relative; width: 100%; }
-        #spyChartW { height: 340px; }
-        #mainChartW { height: 260px; }
-        #netChartW, #ratioChartW { height: 200px; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Chart cards */
+.chart-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:11px;overflow:hidden;margin-bottom:14px}
+.chart-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--bdr)}
+.chart-head h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:600;color:var(--t1)}
+.chart-head .badge{font-size:10px;font-family:'JetBrains Mono',monospace;padding:3px 10px;border-radius:16px;background:rgba(68,136,255,.1);color:var(--b)}
+.chart-area{position:relative;padding:10px 14px}
+.chart-area canvas{width:100%!important}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
-        /* Legend */
-        .legend-box { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; }
-        .legend-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text-secondary); }
-        .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
-        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); padding: 6px 0; }
-        .legend-item .icon { font-size: 16px; width: 24px; text-align: center; }
+/* Legend */
+.legend-box{background:var(--bg2);border:1px solid var(--bdr);border-radius:11px;padding:14px 18px;margin-bottom:14px}
+.legend-box h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--t2)}
+.legend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t3);padding:4px 0}
+.legend-item .icon{font-size:14px;width:20px;text-align:center}
 
-        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: var(--text-muted); gap: 14px; }
-        .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .footer { text-align: center; padding: 20px 0; font-size: 11px; color: var(--text-muted); }
+/* Share */
+.share-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-top:20px;background:var(--bg1);border:1px solid var(--bdr);border-radius:10px}
+.share-bar-preview{font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;font-family:'JetBrains Mono',monospace}
+.share-bar-preview b{color:var(--t2);font-weight:600}
+.share-bar-buttons{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.share-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid var(--bdr2);background:var(--bg2);color:var(--t3);white-space:nowrap;font-family:inherit}
+.share-btn:hover{transform:translateY(-1px);color:var(--t1)}
+.share-btn svg{flex-shrink:0}
+.share-btn--x:hover{border-color:#fff;color:#fff;background:var(--bg3)}
+.share-btn--kakao:hover{border-color:#FEE500;color:#191919;background:#FEE500}
+.share-btn--tg:hover{border-color:#26A5E4;color:#fff;background:rgba(38,165,228,.15)}
+.share-btn--ig:hover{border-color:#E4405F;color:#fff;background:rgba(228,64,95,.15)}
+.share-btn--copy:hover{border-color:var(--g);color:var(--g);background:rgba(0,255,136,.07)}
+.inline-share{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;border-top:1px solid var(--bdr)}
+.inline-share .lbl{font-size:10px;color:var(--t4);margin-right:4px}
+.inline-share .share-btn{padding:6px 10px}
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999}
+.toast{background:var(--bg4);border:1px solid var(--bdr2);border-left:3px solid var(--g);border-radius:8px;padding:10px 18px;font-size:12px;color:var(--t1);box-shadow:0 8px 32px rgba(0,0,0,.7);animation:toastIn .3s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-        @media (max-width: 768px) {
-            .container { padding: 14px 10px; }
-            .header h1 { font-size: 18px; }
-            .stats { grid-template-columns: repeat(2, 1fr); }
-            .grid2 { grid-template-columns: 1fr; }
-            #spyChartW { height: 260px; }
-            #mainChartW { height: 200px; }
-            .sc .vl { font-size: 20px; }
-            .sig-badge { padding: 7px 12px; font-size: 12px; }
-        }
-    </style>
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--t4);gap:14px}
+.spinner{width:32px;height:32px;border:3px solid var(--bdr);border-top-color:var(--b);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{text-align:center;padding:16px 0;font-size:10px;color:var(--t4)}
+
+@media(max-width:768px){
+.page{padding:12px 16px}.hdr{padding:8px 16px}.hdr-title{font-size:15px}
+.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}
+.sc .vl{font-size:18px}.sig-badge{padding:6px 10px;font-size:11px}
+.share-bar{flex-direction:column;gap:10px;align-items:stretch}
+.share-bar-preview{max-width:100%}
+.share-bar-buttons{justify-content:center;flex-wrap:wrap}
+.share-btn .lbl{display:none}.share-btn{padding:8px 10px}
+.inline-share .lbl{display:none}
+.chart-area{padding:8px 8px}
+}
+@media(max-width:520px){
+.page{padding:10px 10px}.stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js" crossorigin="anonymous" async></script>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <div>
-            <h1>S&P 500 · 52주 신고/신저 + SPY 시그널</h1>
-            <div class="sub" id="updateInfo">데이터 로딩 중...</div>
-        </div>
-        <div class="controls">
-            <button class="rbtn" data-range="90">3M</button>
-            <button class="rbtn active" data-range="365">1Y</button>
-            <button class="rbtn" data-range="730">2Y</button>
-            <button class="rbtn" data-range="1825">5Y</button>
-            <button class="rbtn" data-range="3650">10Y</button>
-        </div>
-    </div>
+<div class="hdr"><span class="hdr-title">S&P 500 · 52주 신고/신저</span></div>
+<div class="page">
 
-    <div class="signal-row" id="signalRow"></div>
+<div class="sub-info" id="updateInfo">데이터 로딩 중...</div>
 
-    <div class="stats">
-        <div class="sc"><div class="lb">SPY 종가</div><div class="vl c-cyan" id="sSpy">—</div><div class="sm" id="sSpySub"></div></div>
-        <div class="sc"><div class="lb">52주 신고</div><div class="vl c-green" id="sHigh">—</div><div class="sm" id="sHighSub"></div></div>
-        <div class="sc"><div class="lb">52주 신저</div><div class="vl c-red" id="sLow">—</div><div class="sm" id="sLowSub"></div></div>
-        <div class="sc"><div class="lb">Net (신고-신저)</div><div class="vl c-blue" id="sNet">—</div><div class="sm" id="sNetSub"></div></div>
-        <div class="sc"><div class="lb">신고 10일 MA</div><div class="vl c-purple" id="sMA">—</div><div class="sm" id="sMASub"></div></div>
-        <div class="sc"><div class="lb">Breadth 시그널</div><div class="vl c-yellow" id="sSig">—</div><div class="sm" id="sSigSub"></div></div>
-    </div>
+<div class="nav-link">
+<a href="https://herdvibe.com/105" class="active">52주 신고/신저</a>
+<a href="https://herdvibe.com/106">신고신저 추세선</a>
+</div>
 
-    <div id="loadingEl" class="loading"><div class="spinner"></div><div>데이터를 불러오는 중...</div></div>
+<div class="controls">
+<button class="rbtn" data-range="90">3M</button>
+<button class="rbtn" data-range="365">1Y</button>
+<button class="rbtn" data-range="730">2Y</button>
+<button class="rbtn active" data-range="1825">5Y</button>
+<button class="rbtn" data-range="3650">10Y</button>
+</div>
 
-    <div id="chartsEl" style="display:none;">
-        <div class="panel">
-            <div class="panel-hdr"><span class="title">SPY 가격 + 트레이딩 시그널</span><span class="badge" id="dateRange">—</span></div>
-            <div class="cw" id="spyChartW"><canvas id="spyChart"></canvas></div>
-        </div>
-        <div class="panel">
-            <div class="panel-hdr"><span class="title">52주 신고 / 신저 종목 수</span></div>
-            <div class="cw" id="mainChartW"><canvas id="mainChart"></canvas></div>
-        </div>
-        <div class="grid2">
-            <div class="panel">
-                <div class="panel-hdr"><span class="title">Net 신고−신저 (10일 MA)</span></div>
-                <div class="cw" id="netChartW"><canvas id="netChart"></canvas></div>
-            </div>
-            <div class="panel">
-                <div class="panel-hdr"><span class="title">신고/신저 비율 (%)</span></div>
-                <div class="cw" id="ratioChartW"><canvas id="ratioChart"></canvas></div>
-            </div>
-        </div>
-        <div class="legend-box">
-            <h3>📖 시그널 해석 가이드</h3>
-            <div class="legend-grid">
-                <div class="legend-item"><span class="icon">🟢</span><strong>BUY</strong>&nbsp;— SPY > 50MA + Net MA가 음→양 전환 (≥30)</div>
-                <div class="legend-item"><span class="icon">🔴</span><strong>SELL</strong>&nbsp;— SPY < 50MA + Net MA가 양→음 전환 (≤-30)</div>
-                <div class="legend-item"><span class="icon">⚠️</span><strong>약세 다이버전스</strong>&nbsp;— SPY ↑ but 신고 MA 감소: 상승 피로</div>
-                <div class="legend-item"><span class="icon">💡</span><strong>강세 다이버전스</strong>&nbsp;— SPY ↓ but 신저 MA 감소: 바닥 가능성</div>
-                <div class="legend-item"><span class="icon">🔥</span><strong>Breadth Thrust</strong>&nbsp;— 신고 > 100개 (20%+): 강한 매수 구간</div>
-                <div class="legend-item"><span class="icon">💀</span><strong>Washout</strong>&nbsp;— 신저 > 100개 (20%+): 패닉 → 반등 주의</div>
-            </div>
-        </div>
-    </div>
-    <div class="footer">Data: yfinance (S&P 500) · SPY ETF · Updated daily after market close · <span style="color:var(--text-secondary)">HerdVibe</span></div>
+<div class="signal-row" id="signalRow"></div>
+
+<div class="stats">
+<div class="sc"><div class="lb">SPY 종가</div><div class="vl c-cyan" id="sSpy">—</div><div class="sm" id="sSpySub"></div></div>
+<div class="sc"><div class="lb">52주 신고</div><div class="vl c-green" id="sHigh">—</div><div class="sm" id="sHighSub"></div></div>
+<div class="sc"><div class="lb">52주 신저</div><div class="vl c-red" id="sLow">—</div><div class="sm" id="sLowSub"></div></div>
+<div class="sc"><div class="lb">NET (신고−신저)</div><div class="vl c-blue" id="sNet">—</div><div class="sm" id="sNetSub"></div></div>
+<div class="sc"><div class="lb">신고 10일 MA</div><div class="vl c-purple" id="sMA">—</div><div class="sm" id="sMASub"></div></div>
+<div class="sc"><div class="lb">BREADTH 시그널</div><div class="vl c-yellow" id="sSig">—</div><div class="sm" id="sSigSub"></div></div>
+</div>
+
+<div id="loadingEl" class="loading"><div class="spinner"></div><div>데이터를 불러오는 중...</div></div>
+
+<div id="chartsEl" style="display:none;">
+
+<div class="chart-card">
+<div class="chart-head"><h3>SPY 가격 + 트레이딩 시그널</h3><span class="badge" id="dateRange">—</span></div>
+<div class="chart-area" style="height:340px;"><canvas id="spyChart"></canvas></div>
+<div class="inline-share" id="inlineShare1"></div>
+</div>
+
+<div class="chart-card">
+<div class="chart-head"><h3>52주 신고 / 신저 종목 수</h3></div>
+<div class="chart-area" style="height:250px;"><canvas id="mainChart"></canvas></div>
+</div>
+
+<div class="chart-card">
+<div class="chart-head"><h3>신고 / 신저 비율 (%) — Overbought · Oversold 존</h3></div>
+<div class="chart-area" style="height:220px;"><canvas id="ratioChart"></canvas></div>
+<div class="inline-share" id="inlineShare2"></div>
+</div>
+
+<div class="grid2">
+<div class="chart-card">
+<div class="chart-head"><h3>Net 신고−신저 (10일 MA)</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="netChart"></canvas></div>
+</div>
+<div class="chart-card">
+<div class="chart-head"><h3>신고 10MA · 신저 10MA</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="maChart"></canvas></div>
+</div>
+</div>
+
+<div class="legend-box">
+<h3>📖 시그널 해석 가이드</h3>
+<div class="legend-grid">
+<div class="legend-item"><span class="icon">🟢</span><strong>BUY</strong> — SPY &gt; 50MA + Net MA 음→양 전환</div>
+<div class="legend-item"><span class="icon">🔴</span><strong>SELL</strong> — SPY &lt; 50MA + Net MA 양→음 전환</div>
+<div class="legend-item"><span class="icon">🔥</span><strong>Breadth Thrust</strong> — 신고 100+ (20%↑): 강한 매수 구간</div>
+<div class="legend-item"><span class="icon">💀</span><strong>Washout</strong> — 신저 100+ (20%↑): 패닉 반등 주의</div>
+<div class="legend-item"><span class="icon">🔺</span><strong>Overbought</strong> — 신고 비율 15%↑: 과열 가능성</div>
+<div class="legend-item"><span class="icon">🔻</span><strong>Oversold</strong> — 신저 비율 10%↑: 공포 매도 가능성</div>
+</div>
+</div>
+
+</div>
+
+<div id="shareBarWrap"></div>
+<div class="footer">Data: yfinance (S&P 500) · SPY ETF · Updated daily · <span style="color:var(--t2)">HerdVibe</span></div>
 </div>
 
 <script>
-const DATA_URL = "./data/sp500_52w_highs_lows.json";
-let raw = [], currentRange = 365, charts = {};
+var SHARE_URL='https://herdvibe.com/105';
+var KAKAO_KEY='a43ed7b39fac35458f4f9df925a279b5';
+var DATA_URL='./data/sp500_52w_highs_lows.json';
+var OB_THRESHOLD=15;
+var OS_THRESHOLD=10;
 
-// ── Helpers ──
-function sma(arr, w) {
-    const r = []; let sum = 0;
-    for (let i = 0; i < arr.length; i++) {
-        const v = arr[i] || 0;
-        sum += v;
-        if (i >= w) sum -= (arr[i - w] || 0);
-        r.push(i >= w - 1 ? sum / w : null);
-    }
-    return r;
-}
+var raw=[],currentRange=1825,charts={};
 
-function getFiltered() {
-    const c = new Date(); c.setDate(c.getDate() - currentRange);
-    const cs = c.toISOString().slice(0, 10);
-    return raw.filter(d => d.date >= cs);
-}
+/* ── Helpers ── */
+function sma(arr,w){var r=[],sum=0;for(var i=0;i<arr.length;i++){var v=arr[i]||0;sum+=v;if(i>=w)sum-=(arr[i-w]||0);r.push(i>=w-1?sum/w:null);}return r;}
+function getFiltered(){var c=new Date();c.setDate(c.getDate()-currentRange);var cs=c.toISOString().slice(0,10);return raw.filter(function(d){return d.date>=cs;});}
 
-// ── Signal Engine ──
-function computeSignals(data) {
-    const highs = data.map(d => d.highs);
-    const lows = data.map(d => d.lows);
-    const net = data.map(d => d.highs - d.lows);
-    const spyArr = data.map(d => d.spy_close || 0);
-
-    const highMA10 = sma(highs, 10);
-    const lowMA10 = sma(lows, 10);
-    const netMA10 = sma(net, 10);
-    const spyMA50 = sma(spyArr, 50);
-
-    const signals = data.map((d, i) => {
-        const sig = { type: null, label: null };
-        if (i < 52 || !d.spy_close || !netMA10[i]) return sig;
-
-        const spy = d.spy_close;
-        const spyPrev = data[i - 20]?.spy_close;
-        const spyAboveMA = spy > (spyMA50[i] || spy);
-        const spyUp = spyPrev && spy > spyPrev * 1.01;
-        const spyDown = spyPrev && spy < spyPrev * 0.99;
-
-        const nma = netMA10[i];
-        const nmaPrev5 = netMA10[i - 5];
-        const hmaCur = highMA10[i] || 0;
-        const hmaPrev = highMA10[i - 20] || 0;
-        const lmaCur = lowMA10[i] || 0;
-        const lmaPrev = lowMA10[i - 20] || 0;
-
-        if (d.highs >= 100) { sig.type = "thrust"; sig.label = "🔥 Breadth Thrust"; }
-        else if (d.lows >= 100) { sig.type = "washout"; sig.label = "💀 Washout"; }
-        else if (spyUp && hmaPrev > 15 && hmaCur < hmaPrev * 0.6) { sig.type = "bear_div"; sig.label = "⚠️ 약세 다이버전스"; }
-        else if (spyDown && lmaPrev > 15 && lmaCur < lmaPrev * 0.6) { sig.type = "bull_div"; sig.label = "💡 강세 다이버전스"; }
-        else if (spyAboveMA && nma >= 30 && nmaPrev5 !== null && nmaPrev5 < 10) { sig.type = "buy"; sig.label = "🟢 BUY"; }
-        else if (!spyAboveMA && nma <= -30 && nmaPrev5 !== null && nmaPrev5 > -10) { sig.type = "sell"; sig.label = "🔴 SELL"; }
-
+/* ── Signal Engine ── */
+function computeSignals(data){
+    var highs=data.map(function(d){return d.highs;});
+    var lows=data.map(function(d){return d.lows;});
+    var net=data.map(function(d){return d.highs-d.lows;});
+    var spyArr=data.map(function(d){return d.spy_close||0;});
+    var highMA10=sma(highs,10),lowMA10=sma(lows,10),netMA10=sma(net,10),spyMA50=sma(spyArr,50);
+    var signals=data.map(function(d,i){
+        var sig={type:null,label:null};
+        if(i<52||!d.spy_close||!netMA10[i])return sig;
+        var spy=d.spy_close,spyPrev=data[i-20]?data[i-20].spy_close:null;
+        var spyAboveMA=spy>(spyMA50[i]||spy);
+        var nma=netMA10[i],nmaPrev5=netMA10[i-5];
+        if(d.highs>=100){sig.type="thrust";sig.label="🔥 Breadth Thrust";}
+        else if(d.lows>=100){sig.type="washout";sig.label="💀 Washout";}
+        else if(spyAboveMA&&nma>=30&&nmaPrev5!==null&&nmaPrev5<10){sig.type="buy";sig.label="🟢 BUY";}
+        else if(!spyAboveMA&&nma<=-30&&nmaPrev5!==null&&nmaPrev5>-10){sig.type="sell";sig.label="🔴 SELL";}
         return sig;
     });
-
-    return { highMA10, lowMA10, netMA10, spyMA50, signals };
+    return{highMA10:highMA10,lowMA10:lowMA10,netMA10:netMA10,spyMA50:spyMA50,signals:signals};
 }
 
-// ── Stats ──
-function updateStats() {
-    const last = raw[raw.length - 1];
-    if (!last) return;
-    const active = last.active || 500;
-    const prev = raw[raw.length - 2];
+/* ── Stats ── */
+function updateStats(){
+    var last=raw[raw.length-1];if(!last)return;
+    var active=last.active||500;var prev=raw[raw.length-2];
+    document.getElementById("sSpy").textContent=last.spy_close?'$'+last.spy_close.toFixed(2):'—';
+    if(prev&&prev.spy_close&&last.spy_close){var chg=((last.spy_close-prev.spy_close)/prev.spy_close*100).toFixed(2);document.getElementById("sSpySub").textContent=(+chg>=0?'+':'')+chg+'%';}
+    document.getElementById("sHigh").textContent=last.highs;
+    document.getElementById("sHighSub").textContent=((last.highs/active)*100).toFixed(1)+'%';
+    document.getElementById("sLow").textContent=last.lows;
+    document.getElementById("sLowSub").textContent=((last.lows/active)*100).toFixed(1)+'%';
+    var net=last.highs-last.lows;var netEl=document.getElementById("sNet");
+    netEl.textContent=(net>=0?'+':'')+net;netEl.className='vl '+(net>=0?'c-green':'c-red');
+    document.getElementById("sNetSub").textContent=net>=0?'Bullish':'Bearish';
+    var r10=raw.slice(-10);var avgH=(r10.reduce(function(s,d){return s+d.highs;},0)/10).toFixed(1);
+    document.getElementById("sMA").textContent=avgH;document.getElementById("sMASub").textContent='10일 평균';
+    var avgNet=r10.reduce(function(s,d){return s+d.highs-d.lows;},0)/10;
+    var st,sc;
+    if(avgNet>30){st='Strong Bull';sc='c-green';}else if(avgNet>0){st='Mild Bull';sc='c-green';}
+    else if(avgNet>-30){st='Mild Bear';sc='c-red';}else{st='Strong Bear';sc='c-red';}
+    document.getElementById("sSig").textContent=st;document.getElementById("sSig").className='vl '+sc;
+    document.getElementById("sSigSub").textContent='Net 10MA: '+(avgNet>=0?'+':'')+avgNet.toFixed(1);
+}
 
-    document.getElementById("sSpy").textContent = last.spy_close ? `$${last.spy_close.toFixed(2)}` : "—";
-    if (prev?.spy_close && last.spy_close) {
-        const chg = ((last.spy_close - prev.spy_close) / prev.spy_close * 100).toFixed(2);
-        document.getElementById("sSpySub").textContent = `${+chg >= 0 ? "+" : ""}${chg}%`;
+function updateSignalBadges(data,signals){
+    var recent=[];var seen={};
+    var last=raw[raw.length-1];var active=last?last.active||500:500;
+    var highPct=last?(last.highs/active)*100:0;
+    var lowPct=last?(last.lows/active)*100:0;
+    for(var i=data.length-1;i>=Math.max(0,data.length-30);i--){
+        var s=signals[i];
+        if(s&&s.type&&!seen[s.type]){seen[s.type]=true;recent.push({type:s.type,label:s.label,date:data[i].date});}
     }
-    document.getElementById("sHigh").textContent = last.highs;
-    document.getElementById("sHighSub").textContent = `${((last.highs / active) * 100).toFixed(1)}%`;
-    document.getElementById("sLow").textContent = last.lows;
-    document.getElementById("sLowSub").textContent = `${((last.lows / active) * 100).toFixed(1)}%`;
-
-    const net = last.highs - last.lows;
-    const netEl = document.getElementById("sNet");
-    netEl.textContent = (net >= 0 ? "+" : "") + net;
-    netEl.className = "vl " + (net >= 0 ? "c-green" : "c-red");
-    document.getElementById("sNetSub").textContent = net >= 0 ? "Bullish" : "Bearish";
-
-    const r10 = raw.slice(-10);
-    const avgH = (r10.reduce((s, d) => s + d.highs, 0) / 10).toFixed(1);
-    document.getElementById("sMA").textContent = avgH;
-    document.getElementById("sMASub").textContent = "10일 평균";
-
-    const avgNet = r10.reduce((s, d) => s + d.highs - d.lows, 0) / 10;
-    let st, sc;
-    if (avgNet > 30) { st = "Strong Bull"; sc = "c-green"; }
-    else if (avgNet > 0) { st = "Mild Bull"; sc = "c-green"; }
-    else if (avgNet > -30) { st = "Mild Bear"; sc = "c-red"; }
-    else { st = "Strong Bear"; sc = "c-red"; }
-    document.getElementById("sSig").textContent = st;
-    document.getElementById("sSig").className = "vl " + sc;
-    document.getElementById("sSigSub").textContent = `Net 10MA: ${avgNet >= 0 ? "+" : ""}${avgNet.toFixed(1)}`;
+    var row=document.getElementById("signalRow");var html='';
+    if(highPct>=OB_THRESHOLD)html+='<div class="sig-badge sig-ob"><span class="dot"></span>🔺 Overbought <span class="mono" style="font-size:11px;opacity:.7">'+highPct.toFixed(1)+'%</span></div>';
+    if(lowPct>=OS_THRESHOLD)html+='<div class="sig-badge sig-os"><span class="dot"></span>🔻 Oversold <span class="mono" style="font-size:11px;opacity:.7">'+lowPct.toFixed(1)+'%</span></div>';
+    if(!recent.length&&!html){row.innerHTML='<div class="sig-badge sig-neutral"><span class="dot"></span>최근 30일 시그널 없음 — 관망</div>';return;}
+    recent.forEach(function(s){
+        var c="sig-neutral";
+        if(s.type==="buy"||s.type==="thrust")c="sig-bull";
+        else if(s.type==="sell"||s.type==="washout")c="sig-bear";
+        html+='<div class="sig-badge '+c+'"><span class="dot"></span>'+s.label+' <span class="mono" style="font-size:11px;opacity:.7">'+s.date+'</span></div>';
+    });
+    row.innerHTML=html;
 }
 
-function updateSignalBadges(data, signals) {
-    const recent = [];
-    const seen = new Set();
-    for (let i = data.length - 1; i >= Math.max(0, data.length - 30); i--) {
-        const s = signals[i];
-        if (s?.type && !seen.has(s.type)) { seen.add(s.type); recent.push({ ...s, date: data[i].date }); }
-    }
-    const row = document.getElementById("signalRow");
-    if (!recent.length) { row.innerHTML = '<div class="sig-badge sig-neutral"><span class="dot"></span>최근 30일 시그널 없음 — 관망</div>'; return; }
-    row.innerHTML = recent.map(s => {
-        let c = "sig-neutral";
-        if (["buy","thrust","bull_div"].includes(s.type)) c = "sig-bull";
-        else if (["sell","washout"].includes(s.type)) c = "sig-bear";
-        else if (s.type === "bear_div") c = "sig-warn";
-        return `<div class="sig-badge ${c}"><span class="dot"></span>${s.label} <span class="mono" style="font-size:11px;opacity:.7">${s.date}</span></div>`;
-    }).join("");
+/* ── Chart Config ── */
+var ttip={backgroundColor:'rgba(7,7,13,.95)',titleColor:'#e8e8f0',bodyColor:'#8888a0',borderColor:'#1a1a2e',borderWidth:1,cornerRadius:8,padding:12,titleFont:{family:"'JetBrains Mono',monospace",size:10},bodyFont:{family:"'Noto Sans KR',sans-serif",size:11}};
+var xMin=null,xMax=null;
+function xCfg(r){return{type:'time',min:xMin,max:xMax,time:{unit:r<=180?'week':r<=730?'month':'quarter'},grid:{color:'rgba(26,26,46,.6)'},ticks:{color:'#686880',font:{family:"'JetBrains Mono',monospace",size:10},maxRotation:0}};}
+function yCfg(o){o=o||{};return{position:o.pos||'left',grid:{color:o.noGrid?'transparent':'rgba(26,26,46,.6)'},ticks:{color:o.c||'#686880',font:{family:"'JetBrains Mono',monospace",size:10},callback:o.fmt||function(v){return v;}}};}
+
+/* Watermark plugin */
+var wmPlugin={id:'herdvibeWM',beforeDraw:function(c){var ctx=c.ctx,ca=c.chartArea;if(!ca)return;ctx.save();ctx.font='700 28px "Plus Jakarta Sans",sans-serif';ctx.fillStyle='rgba(255,255,255,0.025)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Herdvibe.com',(ca.left+ca.right)/2,(ca.top+ca.bottom)/2);ctx.restore();}};
+
+/* OB/OS background plugin for ratio chart */
+var obosPlugin={id:'obos',beforeDraw:function(ch){
+    var ca=ch.chartArea;if(!ca)return;var ctx=ch.ctx,yScale=ch.scales.y;
+    ctx.save();
+    /* Overbought zone (highs ratio > OB_THRESHOLD) */
+    var yOB=yScale.getPixelForValue(OB_THRESHOLD);
+    var yTop=yScale.getPixelForValue(yScale.max);
+    if(yOB>yTop){ctx.fillStyle='rgba(255,68,102,0.06)';ctx.fillRect(ca.left,yTop,ca.right-ca.left,yOB-yTop);
+    ctx.strokeStyle='rgba(255,68,102,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(ca.left,yOB);ctx.lineTo(ca.right,yOB);ctx.stroke();}
+    /* Oversold zone (lows area - shown as negative) */
+    var yOS=yScale.getPixelForValue(-OS_THRESHOLD);
+    var yBot=yScale.getPixelForValue(yScale.min);
+    if(yOS<yBot){ctx.fillStyle='rgba(0,255,136,0.06)';ctx.fillRect(ca.left,yOS,ca.right-ca.left,yBot-yOS);
+    ctx.strokeStyle='rgba(0,255,136,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(ca.left,yOS);ctx.lineTo(ca.right,yOS);ctx.stroke();}
+    ctx.restore();
+}};
+
+function buildCharts(){
+    var data=getFiltered();if(!data.length)return;
+    var labels=data.map(function(d){return d.date;});
+    xMin=labels[0];xMax=labels[labels.length-1];
+    var comp=computeSignals(data);
+    updateSignalBadges(data,comp.signals);
+    document.getElementById("dateRange").textContent=labels[0]+' → '+labels[labels.length-1];
+    var pts={buy:[],sell:[],thrust:[],washout:[]};
+    comp.signals.forEach(function(s,i){if(s.type&&data[i].spy_close&&pts[s.type])pts[s.type].push({x:labels[i],y:data[i].spy_close});});
+
+    /* 1. SPY Chart */
+    var c1=document.getElementById("spyChart").getContext("2d");
+    if(charts.spy)charts.spy.destroy();
+    charts.spy=new Chart(c1,{plugins:[wmPlugin],data:{labels:labels,datasets:[
+        {type:'line',label:'SPY',data:data.map(function(d){return d.spy_close||null;}),borderColor:'rgba(34,211,238,.85)',borderWidth:2,pointRadius:0,tension:.2,fill:false,order:5},
+        {type:'line',label:'SPY 50MA',data:comp.spyMA50,borderColor:'rgba(136,136,160,.35)',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:.2,fill:false,order:6},
+        {type:'scatter',label:'🟢 BUY',data:pts.buy,backgroundColor:'#00ff88',borderColor:'#fff',borderWidth:1.5,pointRadius:7,pointStyle:'triangle',order:1},
+        {type:'scatter',label:'🔴 SELL',data:pts.sell,backgroundColor:'#ff4466',borderColor:'#fff',borderWidth:1.5,pointRadius:7,pointStyle:'triangle',rotation:180,order:1},
+        {type:'scatter',label:'🔥 Thrust',data:pts.thrust,backgroundColor:'#ffcc00',borderColor:'#fff',borderWidth:1.5,pointRadius:8,pointStyle:'star',order:1},
+        {type:'scatter',label:'💀 Washout',data:pts.washout,backgroundColor:'#dc2626',borderColor:'#fff',borderWidth:1.5,pointRadius:8,pointStyle:'crossRot',order:1},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{labels:{color:'#8888a0',font:{size:10},usePointStyle:true,padding:10}},tooltip:{...ttip,callbacks:{label:function(c){if(c.dataset.type==='scatter')return c.dataset.label+' @ $'+c.raw.y;return c.raw!=null?c.dataset.label+': $'+Number(c.raw).toFixed(2):null;}}}},
+        scales:{x:xCfg(currentRange),y:yCfg({c:'#22d3ee'})}}});
+
+    /* 2. Highs/Lows Bar */
+    var c2=document.getElementById("mainChart").getContext("2d");
+    if(charts.main)charts.main.destroy();
+    charts.main=new Chart(c2,{type:'bar',plugins:[wmPlugin],data:{labels:labels,datasets:[
+        {label:'52주 신고',data:data.map(function(d){return d.highs;}),backgroundColor:'rgba(0,255,136,.55)',barPercentage:1,categoryPercentage:1},
+        {label:'52주 신저',data:data.map(function(d){return -d.lows;}),backgroundColor:'rgba(255,68,102,.55)',barPercentage:1,categoryPercentage:1},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{labels:{color:'#8888a0',font:{size:10},usePointStyle:true,pointStyle:'rect'}},tooltip:{...ttip,callbacks:{label:function(c){return c.dataset.label+': '+Math.abs(c.raw)+'개';}}}},
+        scales:{x:xCfg(currentRange),y:yCfg({fmt:function(v){return Math.abs(v);}})}}});
+
+    /* 3. Ratio Chart with OB/OS zones */
+    var c3=document.getElementById("ratioChart").getContext("2d");
+    if(charts.ratio)charts.ratio.destroy();
+    var highPcts=data.map(function(d){return(d.highs/(d.active||500))*100;});
+    var lowPcts=data.map(function(d){return-((d.lows/(d.active||500))*100);});
+    charts.ratio=new Chart(c3,{type:'line',plugins:[wmPlugin,obosPlugin],data:{labels:labels,datasets:[
+        {label:'신고 %',data:highPcts,borderColor:'rgba(0,255,136,.9)',backgroundColor:'rgba(0,255,136,.06)',borderWidth:1.5,pointRadius:0,fill:true,tension:.3},
+        {label:'신저 %',data:lowPcts,borderColor:'rgba(255,68,102,.9)',backgroundColor:'rgba(255,68,102,.06)',borderWidth:1.5,pointRadius:0,fill:true,tension:.3},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:function(c){return c.dataset.label+': '+Math.abs(c.raw).toFixed(1)+'%';}}}},
+        scales:{x:xCfg(currentRange),y:yCfg({fmt:function(v){return Math.abs(v).toFixed(0)+'%';}})}}});
+
+    /* 4. Net Chart */
+    var netVals=data.map(function(d){return d.highs-d.lows;});
+    var c4=document.getElementById("netChart").getContext("2d");
+    if(charts.net)charts.net.destroy();
+    charts.net=new Chart(c4,{type:'line',plugins:[wmPlugin],data:{labels:labels,datasets:[
+        {label:'Net (raw)',data:netVals,borderColor:'rgba(68,136,255,.15)',borderWidth:1,pointRadius:0,tension:0},
+        {label:'10MA',data:comp.netMA10,borderColor:'rgba(68,136,255,1)',borderWidth:2,pointRadius:0,tension:.3},
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:ttip},scales:{x:xCfg(currentRange),y:yCfg()}},
+    plugins:[{id:'zl',afterDraw:function(ch){var y=ch.scales.y.getPixelForValue(0),cx=ch.ctx;cx.save();cx.strokeStyle='rgba(255,68,102,.3)';cx.lineWidth=1;cx.setLineDash([4,4]);cx.beginPath();cx.moveTo(ch.chartArea.left,y);cx.lineTo(ch.chartArea.right,y);cx.stroke();cx.restore();}}]});
+
+    /* 5. MA Chart */
+    var c5=document.getElementById("maChart").getContext("2d");
+    if(charts.ma)charts.ma.destroy();
+    charts.ma=new Chart(c5,{type:'line',plugins:[wmPlugin],data:{labels:labels,datasets:[
+        {label:'신고 10MA',data:comp.highMA10,borderColor:'rgba(0,255,136,.8)',borderWidth:1.5,pointRadius:0,tension:.3,fill:false},
+        {label:'신저 10MA',data:comp.lowMA10,borderColor:'rgba(255,68,102,.8)',borderWidth:1.5,pointRadius:0,tension:.3,fill:false},
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8888a0',font:{size:10},usePointStyle:true}},tooltip:ttip},scales:{x:xCfg(currentRange),y:yCfg()}}});
 }
 
-// ── Chart Config ──
-const ttip = { backgroundColor: "rgba(10,14,23,.95)", titleColor: "#f1f5f9", bodyColor: "#94a3b8", borderColor: "#1e293b", borderWidth: 1, cornerRadius: 8, padding: 12, titleFont: { family: "'JetBrains Mono',monospace", size: 11 }, bodyFont: { family: "'Noto Sans KR',sans-serif", size: 12 } };
-let xMin = null, xMax = null;
-function xCfg(r) { return { type: "time", min: xMin, max: xMax, time: { unit: r <= 180 ? "week" : r <= 730 ? "month" : "quarter" }, grid: { color: "rgba(30,41,59,.4)" }, ticks: { color: "#475569", font: { family: "'JetBrains Mono',monospace", size: 10 }, maxRotation: 0 } }; }
-function yCfg(o = {}) { return { position: o.pos || "left", grid: { color: o.noGrid ? "transparent" : "rgba(30,41,59,.4)" }, ticks: { color: o.c || "#475569", font: { family: "'JetBrains Mono',monospace", size: 10 }, callback: o.fmt || (v => v) } }; }
-
-function buildCharts() {
-    const data = getFiltered();
-    if (!data.length) return;
-    const labels = data.map(d => d.date);
-    xMin = labels[0];
-    xMax = labels[labels.length - 1];
-    const { highMA10, lowMA10, netMA10, spyMA50, signals } = computeSignals(data);
-    updateSignalBadges(data, signals);
-    document.getElementById("dateRange").textContent = `${labels[0]} → ${labels[labels.length - 1]}`;
-
-    // Signal scatter points
-    const pts = { buy: [], sell: [], thrust: [], washout: [], bear_div: [], bull_div: [] };
-    signals.forEach((s, i) => { if (s.type && data[i].spy_close) pts[s.type]?.push({ x: labels[i], y: data[i].spy_close }); });
-
-    // 1. SPY Chart
-    const c1 = document.getElementById("spyChart").getContext("2d");
-    if (charts.spy) charts.spy.destroy();
-    charts.spy = new Chart(c1, {
-        data: { labels, datasets: [
-            { type: "line", label: "SPY", data: data.map(d => d.spy_close || null), borderColor: "rgba(34,211,238,.85)", borderWidth: 2, pointRadius: 0, tension: .2, fill: false, order: 5 },
-            { type: "line", label: "SPY 50MA", data: spyMA50, borderColor: "rgba(148,163,184,.35)", borderWidth: 1.5, borderDash: [5,3], pointRadius: 0, tension: .2, fill: false, order: 6 },
-            { type: "scatter", label: "🟢 BUY", data: pts.buy, backgroundColor: "#22c55e", borderColor: "#fff", borderWidth: 1.5, pointRadius: 7, pointStyle: "triangle", order: 1 },
-            { type: "scatter", label: "🔴 SELL", data: pts.sell, backgroundColor: "#ef4444", borderColor: "#fff", borderWidth: 1.5, pointRadius: 7, pointStyle: "triangle", rotation: 180, order: 1 },
-            { type: "scatter", label: "🔥 Thrust", data: pts.thrust, backgroundColor: "#f59e0b", borderColor: "#fff", borderWidth: 1.5, pointRadius: 8, pointStyle: "star", order: 1 },
-            { type: "scatter", label: "💀 Washout", data: pts.washout, backgroundColor: "#dc2626", borderColor: "#fff", borderWidth: 1.5, pointRadius: 8, pointStyle: "crossRot", order: 1 },
-            { type: "scatter", label: "⚠️ 약세 Div", data: pts.bear_div, backgroundColor: "#f59e0b", borderColor: "#f59e0b", borderWidth: 2, pointRadius: 6, pointStyle: "rectRot", order: 1 },
-            { type: "scatter", label: "💡 강세 Div", data: pts.bull_div, backgroundColor: "#a78bfa", borderColor: "#a78bfa", borderWidth: 2, pointRadius: 6, pointStyle: "rectRot", order: 1 },
-        ]},
-        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-            plugins: { legend: { labels: { color: "#94a3b8", font: { size: 11 }, usePointStyle: true, padding: 12 } }, tooltip: { ...ttip, callbacks: { label(c) { if (c.dataset.type === "scatter") return `${c.dataset.label} @ $${c.raw.y}`; return c.raw != null ? `${c.dataset.label}: $${Number(c.raw).toFixed(2)}` : null; } } } },
-            scales: { x: xCfg(currentRange), y: yCfg({ c: "#22d3ee" }) },
-        },
-    });
-
-    // 2. Highs/Lows Bar
-    const c2 = document.getElementById("mainChart").getContext("2d");
-    if (charts.main) charts.main.destroy();
-    charts.main = new Chart(c2, {
-        type: "bar",
-        data: { labels, datasets: [
-            { label: "52주 신고", data: data.map(d => d.highs), backgroundColor: "rgba(34,197,94,.65)", barPercentage: 1, categoryPercentage: 1 },
-            { label: "52주 신저", data: data.map(d => -d.lows), backgroundColor: "rgba(239,68,68,.65)", barPercentage: 1, categoryPercentage: 1 },
-        ]},
-        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-            plugins: { legend: { labels: { color: "#94a3b8", font: { size: 11 }, usePointStyle: true, pointStyle: "rect" } }, tooltip: { ...ttip, callbacks: { label(c) { return `${c.dataset.label}: ${Math.abs(c.raw)}개`; } } } },
-            scales: { x: xCfg(currentRange), y: yCfg({ fmt: v => Math.abs(v) }) },
-        },
-    });
-
-    // 3. Net Chart
-    const netVals = data.map(d => d.highs - d.lows);
-    const c3 = document.getElementById("netChart").getContext("2d");
-    if (charts.net) charts.net.destroy();
-    charts.net = new Chart(c3, {
-        type: "line",
-        data: { labels, datasets: [
-            { label: "Net (raw)", data: netVals, borderColor: "rgba(59,130,246,.2)", borderWidth: 1, pointRadius: 0, tension: 0 },
-            { label: "10MA", data: netMA10, borderColor: "rgba(59,130,246,1)", borderWidth: 2, pointRadius: 0, tension: .3 },
-        ]},
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: ttip }, scales: { x: xCfg(currentRange), y: yCfg() } },
-        plugins: [{ id: "zl", afterDraw(ch) { const y = ch.scales.y.getPixelForValue(0), cx = ch.ctx; cx.save(); cx.strokeStyle = "rgba(239,68,68,.35)"; cx.lineWidth = 1; cx.setLineDash([4,4]); cx.beginPath(); cx.moveTo(ch.chartArea.left, y); cx.lineTo(ch.chartArea.right, y); cx.stroke(); cx.restore(); } }],
-    });
-
-    // 4. Ratio Chart
-    const c4 = document.getElementById("ratioChart").getContext("2d");
-    if (charts.ratio) charts.ratio.destroy();
-    charts.ratio = new Chart(c4, {
-        type: "line",
-        data: { labels, datasets: [
-            { label: "신고%", data: data.map(d => (d.highs / (d.active || 500)) * 100), borderColor: "rgba(34,197,94,.9)", backgroundColor: "rgba(34,197,94,.08)", borderWidth: 1.5, pointRadius: 0, fill: true, tension: .3 },
-            { label: "신저%", data: data.map(d => (d.lows / (d.active || 500)) * 100), borderColor: "rgba(239,68,68,.9)", backgroundColor: "rgba(239,68,68,.08)", borderWidth: 1.5, pointRadius: 0, fill: true, tension: .3 },
-        ]},
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { ...ttip, callbacks: { label: c => `${c.dataset.label}: ${c.raw.toFixed(1)}%` } } }, scales: { x: xCfg(currentRange), y: yCfg({ fmt: v => v.toFixed(0) + "%" }) } },
-    });
-}
-
-// ── Init ──
-async function init() {
-    try {
-        const resp = await fetch(DATA_URL);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const json = await resp.json();
-        raw = json.data || [];
-        if (!raw.length) throw new Error("No data");
-        const last = raw[raw.length - 1];
-        document.getElementById("updateInfo").textContent = `마지막: ${last.date} · ${raw.length.toLocaleString()}일 · SPY 포함: ${raw.filter(d => d.spy_close).length.toLocaleString()}일`;
+/* ── Init ── */
+async function init(){
+    try{
+        var resp=await fetch(DATA_URL);if(!resp.ok)throw new Error('HTTP '+resp.status);
+        var json=await resp.json();raw=json.data||[];
+        if(!raw.length)throw new Error('No data');
+        var last=raw[raw.length-1];
+        document.getElementById("updateInfo").textContent='마지막: '+last.date+' · '+raw.length.toLocaleString()+'일 · SPY 포함: '+raw.filter(function(d){return d.spy_close;}).length.toLocaleString()+'일';
         updateStats();
-        document.getElementById("loadingEl").style.display = "none";
-        document.getElementById("chartsEl").style.display = "block";
+        document.getElementById("loadingEl").style.display="none";
+        document.getElementById("chartsEl").style.display="block";
         buildCharts();
-    } catch (e) {
-        document.getElementById("loadingEl").innerHTML = `<div style="color:var(--red);text-align:center;padding:40px;">❌ ${e.message}<br><small>fetch_52w_data.py --mode initial 을 먼저 실행하세요.</small></div>`;
+    }catch(e){
+        document.getElementById("loadingEl").innerHTML='<div style="color:var(--r);text-align:center;padding:40px;">❌ '+e.message+'<br><small>fetch_52w_data.py --mode initial 실행 필요</small></div>';
     }
 }
 
-document.querySelectorAll(".rbtn").forEach(b => b.addEventListener("click", () => {
-    document.querySelectorAll(".rbtn").forEach(x => x.classList.remove("active"));
-    b.classList.add("active");
-    currentRange = +b.dataset.range;
-    buildCharts();
-}));
+document.querySelectorAll(".rbtn").forEach(function(b){b.addEventListener("click",function(){
+    document.querySelectorAll(".rbtn").forEach(function(x){x.classList.remove("active");});
+    b.classList.add("active");currentRange=+b.dataset.range;buildCharts();
+});});
 
 init();
+
+/* ── Share Utilities ── */
+function ensureKakao(){try{if(typeof Kakao!=='undefined'&&!Kakao.isInitialized())Kakao.init(KAKAO_KEY);return typeof Kakao!=='undefined'&&Kakao.isInitialized();}catch(e){return false;}}
+function copyToClipboard(t){if(window.parent!==window){window.parent.postMessage({type:'copy',text:t},'*')}if(navigator.clipboard&&navigator.clipboard.writeText&&window.isSecureContext){navigator.clipboard.writeText(t).catch(function(){_fbCopy(t)})}else{_fbCopy(t)}}function _fbCopy(t){var a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;left:-9999px;top:-9999px;opacity:0';document.body.appendChild(a);a.focus();a.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(a)}
+function flashCopied(btn){if(!btn)return;var orig=btn.innerHTML;btn.style.background='#22c55e';btn.style.color='#fff';btn.style.borderColor='#22c55e';btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';setTimeout(function(){btn.style.background='';btn.style.color='';btn.style.borderColor='';btn.innerHTML=orig;},2000);}
+function kakaoShare(title){if(!ensureKakao()){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');return;}try{Kakao.Share.sendDefault({objectType:'feed',content:{title:title||document.title,description:'S&P 500 52주 신고/신저 + OB/OS 시그널',imageUrl:'',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}},buttons:[{title:'대시보드 보기',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}}]});}catch(e){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');}}
+function showToast(msg){var w=document.querySelector('.toast-wrap');if(!w){w=document.createElement('div');w.className='toast-wrap';document.body.appendChild(w);}var t=document.createElement('div');t.className='toast';t.textContent=msg;w.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(12px)';t.style.transition='.3s';setTimeout(function(){t.remove();},300);},3000);}
+function doShare(p,btn){var title='S&P 500 · 52주 신고/신저 — herdvibe.com';switch(p){case'twitter':window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(title)+'&url='+encodeURIComponent(SHARE_URL),'_blank');break;case'telegram':window.open('https://t.me/share/url?url='+encodeURIComponent(SHARE_URL)+'&text='+encodeURIComponent(title),'_blank');break;case'kakao':kakaoShare(title);break;case'instagram':copyToClipboard(SHARE_URL);flashCopied(btn);showToast('링크 복사완료! 인스타그램에 붙여넣기 하세요');break;case'link':copyToClipboard(SHARE_URL);flashCopied(btn);showToast('링크가 복사되었습니다');break;}}
+var xI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
+var kI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.477 3 2 6.463 2 10.691c0 2.724 1.8 5.112 4.508 6.458l-1.148 4.265a.5.5 0 0 0 .764.533l4.94-3.26c.304.02.612.03.936.03 5.523 0 10-3.462 10-7.735C22 6.463 17.523 3 12 3z"/></svg>';
+var tI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
+var iI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>';
+var lI='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+function makeInlineShare(el){el.innerHTML='<span class="lbl">공유</span><button class="share-btn share-btn--x" onclick="doShare(\'twitter\',this)">'+xI+'</button><button class="share-btn share-btn--kakao" onclick="doShare(\'kakao\',this)">'+kI+'</button><button class="share-btn share-btn--tg" onclick="doShare(\'telegram\',this)">'+tI+'</button><button class="share-btn share-btn--copy" onclick="doShare(\'link\',this)">'+lI+'</button>';}
+function makeShareBar(el){el.innerHTML='<div class="share-bar"><div class="share-bar-preview"><b>S&P 500 · 52주 신고/신저</b> — herdvibe.com</div><div class="share-bar-buttons"><button class="share-btn share-btn--x" onclick="doShare(\'twitter\',this)">'+xI+'<span class="lbl">트위터</span></button><button class="share-btn share-btn--kakao" onclick="doShare(\'kakao\',this)">'+kI+'<span class="lbl">카카오톡</span></button><button class="share-btn share-btn--tg" onclick="doShare(\'telegram\',this)">'+tI+'<span class="lbl">텔레그램</span></button><button class="share-btn share-btn--ig" onclick="doShare(\'instagram\',this)">'+iI+'<span class="lbl">인스타</span></button><button class="share-btn share-btn--copy" onclick="doShare(\'link\',this)">'+lI+'<span class="lbl">링크 복사</span></button></div></div>';}
+makeInlineShare(document.getElementById('inlineShare1'));
+makeInlineShare(document.getElementById('inlineShare2'));
+makeShareBar(document.getElementById('shareBarWrap'));
+
+/* ── iframe resize ── */
+(function(){var lastH=0;setInterval(function(){if(window.parent!==window){var h=document.body.scrollHeight;if(h!==lastH){lastH=h;window.parent.postMessage({type:'resize',height:h},'*');}}},300);})();
 </script>
 </body>
 </html>
