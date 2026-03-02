@@ -13,6 +13,7 @@ Usage:
 import json
 import argparse
 import time
+import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -152,49 +153,93 @@ def load_highs_lows():
 
 def calc_vix_score(vix_series):
     """
-    VIX 백분위 기반 점수 (0=극단적 공포, 100=극단적 탐욕)
-    VIX 높을수록 공포 → 점수 낮음
-    1년 롤링 백분위 사용
+    CNN 방식: VIX vs 50일 이동평균, 252일 Z-score 정규화
+    VIX가 50일 MA보다 높으면 공포(낮은 점수)
     """
     scores = {}
     vix_vals = vix_series.sort_index()
+    ma50 = vix_vals.rolling(50).mean()
+
     for i in range(252, len(vix_vals)):
         date = vix_vals.index[i]
         date_str = date.strftime("%Y-%m-%d")
-        window = vix_vals.iloc[i - 252:i + 1]
-        current = vix_vals.iloc[i]
-        percentile = (window < current).sum() / len(window) * 100
-        # VIX 높으면 공포 → 점수 반전
+        current = float(vix_vals.iloc[i])
+        ma = float(ma50.iloc[i])
+        if pd.isna(ma) or ma == 0:
+            continue
+
+        # VIX가 MA 대비 얼마나 높은지 (양수 = 공포)
+        deviation = (current - ma) / ma * 100
+
+        # 252일 Z-score 정규화
+        window_dev = []
+        for j in range(max(0, i - 252), i + 1):
+            m = float(ma50.iloc[j])
+            if pd.isna(m) or m == 0:
+                continue
+            v = float(vix_vals.iloc[j])
+            window_dev.append((v - m) / m * 100)
+
+        if len(window_dev) < 50:
+            continue
+
+        mean_dev = np.mean(window_dev)
+        std_dev = np.std(window_dev)
+        if std_dev == 0:
+            continue
+
+        z = (deviation - mean_dev) / std_dev
+        # Z-score → 0~100 (반전: VIX 높으면 공포 = 낮은 점수)
+        # Z = -2 → 100 (탐욕), Z = +2 → 0 (공포)
+        score = max(0, min(100, (-z + 2) / 4 * 100))
         scores[date_str] = {
-            "value": round(float(current), 2),
-            "score": round(100 - percentile, 1),
+            "value": round(current, 2),
+            "ma50": round(ma, 2),
+            "score": round(score, 1),
         }
     return scores
 
 
 def calc_momentum_score(spy_series):
     """
-    SPY vs 125일 이동평균선
-    위에 있으면 탐욕(100), 아래면 공포(0)
-    거리에 따라 그라데이션
+    CNN 방식: SPY vs 125일 MA, 252일 Z-score 정규화
     """
     scores = {}
     spy = spy_series.sort_index()
     ma125 = spy.rolling(125).mean()
 
-    for i in range(125, len(spy)):
+    for i in range(252, len(spy)):
         date = spy.index[i]
         date_str = date.strftime("%Y-%m-%d")
-        price = spy.iloc[i]
-        ma = ma125.iloc[i]
+        price = float(spy.iloc[i])
+        ma = float(ma125.iloc[i])
         if pd.isna(ma) or ma == 0:
             continue
-        deviation = (price - ma) / ma * 100  # % above/below MA
-        # Clamp to -10% ~ +10% range, map to 0~100
-        score = max(0, min(100, (deviation + 10) / 20 * 100))
+        deviation = (price - ma) / ma * 100
+
+        # 252일 Z-score 정규화
+        window_dev = []
+        for j in range(max(0, i - 252), i + 1):
+            m = float(ma125.iloc[j])
+            if pd.isna(m) or m == 0:
+                continue
+            p = float(spy.iloc[j])
+            window_dev.append((p - m) / m * 100)
+
+        if len(window_dev) < 50:
+            continue
+
+        mean_dev = np.mean(window_dev)
+        std_dev = np.std(window_dev)
+        if std_dev == 0:
+            continue
+
+        z = (deviation - mean_dev) / std_dev
+        # Z = -2 → 0 (공포), Z = +2 → 100 (탐욕)
+        score = max(0, min(100, (z + 2) / 4 * 100))
         scores[date_str] = {
-            "value": round(float(deviation), 2),
-            "ma125": round(float(ma), 2),
+            "value": round(deviation, 2),
+            "ma125": round(ma, 2),
             "score": round(score, 1),
         }
     return scores
@@ -202,22 +247,35 @@ def calc_momentum_score(spy_series):
 
 def calc_highlow_score(highs_lows_data):
     """
-    52주 신고/신저 비율 기반
-    Net highs % = (highs - lows) / active * 100
-    높을수록 탐욕
+    CNN 방식: 52주 신고/신저 비율, 252일 Z-score 정규화
     """
+    sorted_dates = sorted(highs_lows_data.keys())
+    net_pct_history = []
     scores = {}
-    for date_str, d in sorted(highs_lows_data.items()):
+
+    for date_str in sorted_dates:
+        d = highs_lows_data[date_str]
         active = d.get("active", 500)
         if active == 0:
             continue
         net = d["highs"] - d["lows"]
         net_pct = net / active * 100
-        # -20% ~ +20% 범위를 0~100으로
-        score = max(0, min(100, (net_pct + 20) / 40 * 100))
+        net_pct_history.append((date_str, net_pct, d["highs"], d["lows"]))
+
+    for i in range(252, len(net_pct_history)):
+        date_str, net_pct, highs, lows = net_pct_history[i]
+        window = [x[1] for x in net_pct_history[i - 252:i + 1]]
+
+        mean_val = np.mean(window)
+        std_val = np.std(window)
+        if std_val == 0:
+            continue
+
+        z = (net_pct - mean_val) / std_val
+        score = max(0, min(100, (z + 2) / 4 * 100))
         scores[date_str] = {
-            "highs": d["highs"],
-            "lows": d["lows"],
+            "highs": highs,
+            "lows": lows,
             "net_pct": round(net_pct, 2),
             "score": round(score, 1),
         }
@@ -226,28 +284,30 @@ def calc_highlow_score(highs_lows_data):
 
 def calc_breadth_score(all_close, dates):
     """
-    S&P 500 종목 중 200일 이동평균선 위에 있는 비율
-    높을수록 탐욕
+    S&P 500 종목 중 50일 이동평균선 위에 있는 비율
+    (CNN McClellan 대용 - 200MA보다 민감)
+    252일 Z-score 정규화
     """
     scores = {}
 
-    # 각 종목의 200일 MA 계산
-    ma200_dict = {}
+    # 각 종목의 50일 MA 계산
+    ma50_dict = {}
     for ticker, series in all_close.items():
         if ticker in EXTRA_TICKERS:
             continue
-        ma200_dict[ticker] = series.rolling(200).mean()
+        ma50_dict[ticker] = series.rolling(50).mean()
 
-    for date in dates:
+    pct_history = []
+    for date in sorted(dates):
         above = 0
         total = 0
         ts = pd.Timestamp(date)
         for ticker, series in all_close.items():
             if ticker in EXTRA_TICKERS:
                 continue
-            if ts not in series.index or ticker not in ma200_dict:
+            if ts not in series.index or ticker not in ma50_dict:
                 continue
-            ma = ma200_dict[ticker]
+            ma = ma50_dict[ticker]
             if ts not in ma.index or pd.isna(ma.loc[ts]):
                 continue
             total += 1
@@ -256,46 +316,67 @@ def calc_breadth_score(all_close, dates):
 
         if total > 50:
             pct = above / total * 100
-            score = max(0, min(100, pct))
-            scores[date] = {
-                "above200": above,
-                "total": total,
-                "pct": round(pct, 1),
-                "score": round(score, 1),
-            }
+            pct_history.append((date, pct, above, total))
+
+    for i in range(252, len(pct_history)):
+        date, pct, above, total = pct_history[i]
+        window = [x[1] for x in pct_history[i - 252:i + 1]]
+
+        mean_val = np.mean(window)
+        std_val = np.std(window)
+        if std_val == 0:
+            continue
+
+        z = (pct - mean_val) / std_val
+        score = max(0, min(100, (z + 2) / 4 * 100))
+        scores[date] = {
+            "above50": above,
+            "total": total,
+            "pct": round(pct, 1),
+            "score": round(score, 1),
+        }
     return scores
 
 
 def calc_safe_haven_score(tlt_series, spy_series):
     """
-    Safe Haven Demand: TLT vs SPY 20일 상대 수익률
-    TLT가 아웃퍼폼 → 채권으로 도피 → 공포
-    SPY가 아웃퍼폼 → 주식 선호 → 탐욕
+    CNN 방식: SPY vs TLT 20일 상대 수익률, 252일 Z-score 정규화
+    SPY 아웃퍼폼 → 탐욕, TLT 아웃퍼폼 → 공포
     """
     scores = {}
     tlt = tlt_series.sort_index()
     spy = spy_series.sort_index()
 
-    # 인덱스 맞추기
     common = tlt.index.intersection(spy.index)
     tlt = tlt.loc[common]
     spy = spy.loc[common]
 
     tlt_ret20 = tlt.pct_change(20) * 100
     spy_ret20 = spy.pct_change(20) * 100
+    diff = spy_ret20 - tlt_ret20
 
-    for i in range(20, len(common)):
+    for i in range(252, len(common)):
         date = common[i]
         date_str = date.strftime("%Y-%m-%d")
-        diff = float(spy_ret20.iloc[i] - tlt_ret20.iloc[i])  # SPY - TLT
-        if pd.isna(diff):
+        d = float(diff.iloc[i])
+        if pd.isna(d):
             continue
-        # -15% ~ +15% → 0~100
-        score = max(0, min(100, (diff + 15) / 30 * 100))
+
+        window = diff.iloc[max(0, i - 252):i + 1].dropna().values
+        if len(window) < 50:
+            continue
+
+        mean_val = np.mean(window)
+        std_val = np.std(window)
+        if std_val == 0:
+            continue
+
+        z = (d - mean_val) / std_val
+        score = max(0, min(100, (z + 2) / 4 * 100))
         scores[date_str] = {
             "spy_ret20": round(float(spy_ret20.iloc[i]), 2),
             "tlt_ret20": round(float(tlt_ret20.iloc[i]), 2),
-            "diff": round(diff, 2),
+            "diff": round(d, 2),
             "score": round(score, 1),
         }
     return scores
@@ -303,7 +384,7 @@ def calc_safe_haven_score(tlt_series, spy_series):
 
 def calc_junkbond_score(hyg_series, lqd_series):
     """
-    Junk Bond Spread: HYG/LQD 비율의 변화
+    CNN 방식: HYG/LQD 비율, 252일 Z-score 정규화
     비율 상승 → 하이일드 선호 → 탐욕
     비율 하락 → 안전자산 선호 → 공포
     """
@@ -316,34 +397,124 @@ def calc_junkbond_score(hyg_series, lqd_series):
     lqd = lqd.loc[common]
 
     ratio = hyg / lqd
-    ratio_ma20 = ratio.rolling(20).mean()
 
     for i in range(252, len(common)):
         date = common[i]
         date_str = date.strftime("%Y-%m-%d")
         current_ratio = float(ratio.iloc[i])
-        ma = float(ratio_ma20.iloc[i])
-        if pd.isna(ma) or ma == 0:
+        if pd.isna(current_ratio):
             continue
 
-        # 1년 롤링 백분위
-        window = ratio.iloc[i - 252:i + 1]
-        percentile = (window < current_ratio).sum() / len(window) * 100
+        window = ratio.iloc[i - 252:i + 1].dropna().values
+        if len(window) < 50:
+            continue
+
+        mean_val = np.mean(window)
+        std_val = np.std(window)
+        if std_val == 0:
+            continue
+
+        z = (current_ratio - mean_val) / std_val
+        score = max(0, min(100, (z + 2) / 4 * 100))
         scores[date_str] = {
             "ratio": round(current_ratio, 4),
-            "ratio_ma20": round(ma, 4),
-            "score": round(percentile, 1),
+            "score": round(score, 1),
+        }
+    return scores
+
+
+def fetch_putcall_data():
+    """
+    CBOE Total Put/Call Ratio CSV 다운로드
+    https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv
+    """
+    url = "https://cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv"
+    print(f"  📥 CBOE Put/Call Ratio 다운로드: {url}")
+
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode("utf-8", errors="ignore")
+
+        rows = raw.strip().split("\n")
+        data = {}
+        for row in rows:
+            parts = row.strip().split(",")
+            if len(parts) < 5:
+                continue
+            date_str = parts[0].strip()
+            ratio_str = parts[4].strip()
+            # 날짜 파싱: MM/DD/YYYY or MM/DD/YY
+            try:
+                if len(date_str.split("/")[-1]) == 2:
+                    dt = datetime.strptime(date_str, "%m/%d/%y")
+                else:
+                    dt = datetime.strptime(date_str, "%m/%d/%Y")
+                ratio = float(ratio_str)
+                data[dt.strftime("%Y-%m-%d")] = ratio
+            except (ValueError, IndexError):
+                continue
+
+        print(f"  ✅ Put/Call Ratio: {len(data)}일 로드")
+        return data
+    except Exception as e:
+        print(f"  ⚠ Put/Call Ratio 다운로드 실패: {e}")
+        return {}
+
+
+def calc_putcall_score(putcall_data):
+    """
+    CNN 방식: 5일 평균 Put/Call Ratio, 252일 Z-score 정규화
+    Ratio 높으면 공포(풋 매수 증가), 낮으면 탐욕
+    점수 반전: ratio 높을수록 낮은 점수
+    """
+    sorted_dates = sorted(putcall_data.keys())
+    if len(sorted_dates) < 260:
+        print("  ⚠ Put/Call 데이터 부족")
+        return {}
+
+    # pandas Series로 변환
+    idx = pd.DatetimeIndex([pd.Timestamp(d) for d in sorted_dates])
+    values = pd.Series([putcall_data[d] for d in sorted_dates], index=idx)
+
+    # 5일 이동평균 (CNN 방식)
+    ma5 = values.rolling(5).mean()
+
+    scores = {}
+    for i in range(252, len(sorted_dates)):
+        date_str = sorted_dates[i]
+        current_ma5 = float(ma5.iloc[i])
+        if pd.isna(current_ma5):
+            continue
+
+        # 252일 Z-score
+        window = ma5.iloc[max(0, i - 252):i + 1].dropna().values
+        if len(window) < 50:
+            continue
+
+        mean_val = np.mean(window)
+        std_val = np.std(window)
+        if std_val == 0:
+            continue
+
+        z = (current_ma5 - mean_val) / std_val
+        # 반전: ratio 높을수록 공포 → 낮은 점수
+        score = max(0, min(100, (-z + 2) / 4 * 100))
+        scores[date_str] = {
+            "ratio": round(float(values.iloc[i]), 3),
+            "ma5": round(current_ma5, 3),
+            "score": round(score, 1),
         }
     return scores
 
 
 # ─── 종합 점수 계산 ────────────────────────────────────────────────────────────
 
-def build_composite(vix, momentum, highlow, breadth, safe_haven, junkbond):
-    """6개 지표의 평균으로 종합 센티먼트 점수 계산"""
+def build_composite(vix, momentum, highlow, breadth, safe_haven, junkbond, putcall):
+    """7개 지표의 평균으로 종합 센티먼트 점수 계산 (CNN 방식)"""
     # 공통 날짜 찾기
     all_dates = set()
-    for d in [vix, momentum, highlow, breadth, safe_haven, junkbond]:
+    for d in [vix, momentum, highlow, breadth, safe_haven, junkbond, putcall]:
         all_dates.update(d.keys())
     all_dates = sorted(all_dates)
 
@@ -370,6 +541,9 @@ def build_composite(vix, momentum, highlow, breadth, safe_haven, junkbond):
         if date in junkbond:
             scores.append(junkbond[date]["score"])
             indicators["junkbond"] = junkbond[date]
+        if date in putcall:
+            scores.append(putcall[date]["score"])
+            indicators["putcall"] = putcall[date]
 
         # 최소 4개 지표 있어야 유효
         if len(scores) < 4:
@@ -377,14 +551,14 @@ def build_composite(vix, momentum, highlow, breadth, safe_haven, junkbond):
 
         composite = round(sum(scores) / len(scores), 1)
 
-        # 레이블
-        if composite >= 80:
+        # CNN 기준 레이블
+        if composite >= 75:
             label = "Extreme Greed"
-        elif composite >= 60:
+        elif composite >= 55:
             label = "Greed"
-        elif composite >= 40:
+        elif composite >= 45:
             label = "Neutral"
-        elif composite >= 20:
+        elif composite >= 25:
             label = "Fear"
         else:
             label = "Extreme Fear"
@@ -421,11 +595,11 @@ def main():
         print(f"\n📡 업데이트 모드: {start_date} → {end_date}")
 
     # 1) 기존 52w highs/lows 데이터 로드
-    print("\n[1/4] 52w 신고/신저 데이터 로드...")
+    print("\n[1/5] 52w 신고/신저 데이터 로드...")
     highs_lows = load_highs_lows()
 
     # 2) 추가 티커 다운로드 (VIX, SPY, TLT, HYG, LQD)
-    print("\n[2/4] VIX/TLT/HYG/LQD/SPY 다운로드...")
+    print("\n[2/5] VIX/TLT/HYG/LQD/SPY 다운로드...")
     extra = download_batch(EXTRA_TICKERS, start_date, end_date, batch_size=10)
     print(f"  ✅ {len(extra)}개 티커 완료")
 
@@ -435,8 +609,8 @@ def main():
         else:
             print(f"    {t}: ⚠ 데이터 없음")
 
-    # 3) S&P 500 전종목 Close 다운로드 (200일 MA용)
-    print(f"\n[3/4] S&P 500 종목 Close 다운로드 ({len(SP500_TICKERS)}개)...")
+    # 3) S&P 500 전종목 Close 다운로드 (50일 MA용)
+    print(f"\n[3/5] S&P 500 종목 Close 다운로드 ({len(SP500_TICKERS)}개)...")
     all_close = download_batch(SP500_TICKERS, start_date, end_date, batch_size=50)
     print(f"  ✅ {len(all_close)}개 종목 완료")
 
@@ -444,7 +618,7 @@ def main():
     all_close.update(extra)
 
     # 4) 각 지표 계산
-    print("\n[4/4] 센티먼트 지표 계산 중...")
+    print("\n[4/5] 센티먼트 지표 계산 중...")
 
     vix_scores = {}
     if "^VIX" in extra:
@@ -459,10 +633,10 @@ def main():
     highlow_scores = calc_highlow_score(highs_lows)
     print(f"  신고/신저 점수: {len(highlow_scores)}일")
 
-    # 200일 MA용 날짜 리스트
+    # 50일 MA용 날짜 리스트
     common_dates = sorted(set(highs_lows.keys()))
     breadth_scores = calc_breadth_score(all_close, common_dates)
-    print(f"  200일선 위 비율: {len(breadth_scores)}일")
+    print(f"  50일선 위 비율: {len(breadth_scores)}일")
 
     safe_haven_scores = {}
     if "TLT" in extra and "SPY" in extra:
@@ -474,25 +648,34 @@ def main():
         junkbond_scores = calc_junkbond_score(extra["HYG"], extra["LQD"])
         print(f"  정크본드 점수: {len(junkbond_scores)}일")
 
+    # Put/Call Ratio (CBOE CSV)
+    print("\n  📥 Put/Call Ratio 다운로드...")
+    putcall_data = fetch_putcall_data()
+    putcall_scores = calc_putcall_score(putcall_data) if putcall_data else {}
+    if putcall_scores:
+        print(f"  Put/Call 점수: {len(putcall_scores)}일")
+
     # 종합 점수 계산
     print("\n📊 종합 센티먼트 지수 계산...")
     results = build_composite(
         vix_scores, momentum_scores, highlow_scores,
-        breadth_scores, safe_haven_scores, junkbond_scores
+        breadth_scores, safe_haven_scores, junkbond_scores,
+        putcall_scores
     )
     print(f"  ✅ {len(results)}일 데이터 생성")
 
     # 저장
     output = {
         "last_updated": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "total_indicators": 6,
+        "total_indicators": 7,
         "indicator_names": {
-            "vix": "VIX 변동성 지수",
+            "vix": "VIX 변동성 (vs 50일 MA)",
             "momentum": "시장 모멘텀 (SPY vs 125MA)",
             "highlow": "52주 신고/신저 비율",
-            "breadth": "200일선 위 종목 비율",
+            "breadth": "50일선 위 종목 비율",
             "safe_haven": "Safe Haven 수요 (채권 vs 주식)",
             "junkbond": "정크본드 스프레드 (HYG/LQD)",
+            "putcall": "Put/Call Ratio (CBOE 5일 평균)",
         },
         "data": results,
     }
