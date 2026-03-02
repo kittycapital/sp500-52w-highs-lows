@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>공포 & 탐욕 지수 | HerdVibe</title>
 <meta property="og:title" content="공포 & 탐욕 지수 · Market Sentiment | HerdVibe">
-<meta property="og:description" content="6개 지표 기반 종합 시장 센티먼트 대시보드">
+<meta property="og:description" content="7개 지표 기반 종합 시장 센티먼트 대시보드">
 <meta property="og:url" content="https://herdvibe.com/109">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -144,7 +144,7 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 <div class="gauge-sub" id="gaugeSub"></div>
 </div>
 
-<!-- 6 Indicator Cards -->
+<!-- 7 Indicator Cards -->
 <div class="ind-grid">
 <div class="ind-card" id="cardVix">
   <div class="ind-name">VIX 변동성</div>
@@ -165,10 +165,16 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
   <div class="ind-bar"><div class="ind-bar-fill" id="hlBar"></div></div>
 </div>
 <div class="ind-card" id="cardBreadth">
-  <div class="ind-name">200일선 위 비율</div>
+  <div class="ind-name">50일선 위 비율</div>
   <div class="ind-score mono" id="brScore">—</div>
   <div class="ind-val" id="brVal"></div>
   <div class="ind-bar"><div class="ind-bar-fill" id="brBar"></div></div>
+</div>
+<div class="ind-card" id="cardPutcall">
+  <div class="ind-name">Put/Call Ratio</div>
+  <div class="ind-score mono" id="pcScore">—</div>
+  <div class="ind-val" id="pcVal"></div>
+  <div class="ind-bar"><div class="ind-bar-fill" id="pcBar"></div></div>
 </div>
 <div class="ind-card" id="cardSafe">
   <div class="ind-name">Safe Haven 수요</div>
@@ -219,7 +225,7 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 <div class="chart-area" style="height:200px;"><canvas id="hlChart"></canvas></div>
 </div>
 <div class="chart-card">
-<div class="chart-head"><h3>200일선 위 종목 비율</h3></div>
+<div class="chart-head"><h3>50일선 위 종목 비율</h3></div>
 <div class="chart-area" style="height:200px;"><canvas id="brChart"></canvas></div>
 </div>
 </div>
@@ -235,15 +241,24 @@ a{color:var(--g);text-decoration:none}::selection{background:var(--b);color:#fff
 </div>
 </div>
 
+<div class="grid2">
+<div class="chart-card">
+<div class="chart-head"><h3>Put/Call Ratio (CBOE 5일 평균)</h3></div>
+<div class="chart-area" style="height:200px;"><canvas id="pcChart"></canvas></div>
+</div>
+<div class="chart-card" style="visibility:hidden;"></div>
+</div>
+
 <div class="legend-box">
 <h3>지표 해석 가이드</h3>
 <div class="legend-grid">
-<div class="legend-item"><span class="icon">📊</span><strong>VIX</strong> — 변동성 지수. 높을수록 공포, 낮을수록 탐욕</div>
+<div class="legend-item"><span class="icon">📊</span><strong>VIX</strong> — VIX vs 50일 이동평균. 평균 대비 높으면 공포, 낮으면 탐욕</div>
 <div class="legend-item"><span class="icon">📈</span><strong>모멘텀</strong> — SPY가 125일선 위면 탐욕, 아래면 공포</div>
 <div class="legend-item"><span class="icon">🔺</span><strong>신고/신저</strong> — 신고 많으면 탐욕, 신저 많으면 공포</div>
-<div class="legend-item"><span class="icon">📉</span><strong>200일선</strong> — 위에 있는 종목 많으면 탐욕, 적으면 공포</div>
+<div class="legend-item"><span class="icon">📉</span><strong>50일선</strong> — 위에 있는 종목 많으면 탐욕, 적으면 공포</div>
 <div class="legend-item"><span class="icon">🛡</span><strong>Safe Haven</strong> — 채권 선호 시 공포, 주식 선호 시 탐욕</div>
 <div class="legend-item"><span class="icon">💰</span><strong>정크본드</strong> — 하이일드 선호 시 탐욕, 안전채권 선호 시 공포</div>
+<div class="legend-item"><span class="icon">📋</span><strong>Put/Call</strong> — 풋옵션 매수 증가 시 공포, 콜옵션 매수 증가 시 탐욕</div>
 </div>
 </div>
 
@@ -265,10 +280,10 @@ var raw=[],spyMap={},currentRange=365,charts={};
 function getFiltered(){var c=new Date();c.setDate(c.getDate()-currentRange);var cs=c.toISOString().slice(0,10);return raw.filter(function(d){return d.date>=cs;});}
 
 function scoreColor(s){
-    if(s>=80)return'var(--g)';
-    if(s>=60)return'#88cc44';
-    if(s>=40)return'var(--y)';
-    if(s>=20)return'var(--orange)';
+    if(s>=75)return'var(--g)';
+    if(s>=55)return'#88cc44';
+    if(s>=45)return'var(--y)';
+    if(s>=25)return'var(--orange)';
     return'var(--r)';
 }
 function labelKo(lbl){
@@ -304,12 +319,13 @@ function updateCard(prefix,score,valText){
 
 function updateIndicators(d){
     var ind=d.indicators||{};
-    if(ind.vix) updateCard('vix',ind.vix.score,'VIX: '+ind.vix.value);
+    if(ind.vix) updateCard('vix',ind.vix.score,'VIX: '+ind.vix.value+(ind.vix.ma50?' (MA50: '+ind.vix.ma50+')':''));
     if(ind.momentum) updateCard('mom',ind.momentum.score,'SPY vs 125MA: '+(ind.momentum.value>=0?'+':'')+ind.momentum.value+'%');
     if(ind.highlow) updateCard('hl',ind.highlow.score,'Net: '+(ind.highlow.net_pct>=0?'+':'')+ind.highlow.net_pct+'%');
-    if(ind.breadth) updateCard('br',ind.breadth.score,ind.breadth.pct+'% ('+ind.breadth.above200+'/'+ind.breadth.total+')');
+    if(ind.breadth) updateCard('br',ind.breadth.score,ind.breadth.pct+'% ('+ind.breadth.above50+'/'+ind.breadth.total+')');
     if(ind.safe_haven) updateCard('sh',ind.safe_haven.score,'SPY−TLT 20일: '+(ind.safe_haven.diff>=0?'+':'')+ind.safe_haven.diff+'%');
     if(ind.junkbond) updateCard('jb',ind.junkbond.score,'HYG/LQD: '+ind.junkbond.ratio);
+    if(ind.putcall) updateCard('pc',ind.putcall.score,'P/C 5일: '+ind.putcall.ma5);
 }
 
 /* ── Chart Config ── */
@@ -363,8 +379,8 @@ function buildCharts(){
             var nextX=(i<sentimentZoneData.length-1)?xScale.getPixelForValue(new Date(sentimentZoneData[i+1].date).getTime()):x+2;
             if(x<ca.left||x>ca.right)continue;
             var w=Math.max(nextX-x,1.5);
-            if(s>=80){ctx.fillStyle='rgba(0,255,136,0.08)';}
-            else if(s<=20){ctx.fillStyle='rgba(255,68,102,0.08)';}
+            if(s>=75){ctx.fillStyle='rgba(0,255,136,0.08)';}
+            else if(s<=25){ctx.fillStyle='rgba(255,68,102,0.08)';}
             else{continue;}
             ctx.fillRect(x,ca.top,w,ca.bottom-ca.top);
         }
@@ -393,10 +409,10 @@ function buildCharts(){
     var compScores=data.map(function(d){return d.composite;});
     var compColors=data.map(function(d){
         var s=d.composite;
-        if(s>=80)return'rgba(0,255,136,0.8)';
-        if(s>=60)return'rgba(136,204,68,0.8)';
-        if(s>=40)return'rgba(255,204,0,0.8)';
-        if(s>=20)return'rgba(249,115,22,0.8)';
+        if(s>=75)return'rgba(0,255,136,0.8)';
+        if(s>=55)return'rgba(136,204,68,0.8)';
+        if(s>=45)return'rgba(255,204,0,0.8)';
+        if(s>=25)return'rgba(249,115,22,0.8)';
         return'rgba(255,68,102,0.8)';
     });
     charts.comp=new Chart(c1,{type:'line',plugins:[wmPlugin,zoneBands],data:{labels:labels,datasets:[
@@ -430,9 +446,10 @@ function buildCharts(){
     subChart('vixChart','VIX','vix','rgb(255,68,102)',function(d){return'VIX: '+d.value;});
     subChart('momChart','모멘텀','momentum','rgb(34,211,238)',function(d){return(d.value>=0?'+':'')+d.value+'%';});
     subChart('hlChart','신고/신저','highlow','rgb(0,255,136)',function(d){return'Net: '+(d.net_pct>=0?'+':'')+d.net_pct+'%';});
-    subChart('brChart','200일선 위','breadth','rgb(167,139,250)',function(d){return d.pct+'%';});
+    subChart('brChart','50일선 위','breadth','rgb(167,139,250)',function(d){return d.pct+'%';});
     subChart('shChart','Safe Haven','safe_haven','rgb(68,136,255)',function(d){return'차이: '+(d.diff>=0?'+':'')+d.diff+'%';});
     subChart('jbChart','정크본드','junkbond','rgb(249,115,22)',function(d){return'비율: '+d.ratio;});
+    subChart('pcChart','Put/Call','putcall','rgb(236,72,153)',function(d){return'P/C: '+d.ma5;});
 }
 
 /* ── Init ── */
@@ -462,7 +479,7 @@ async function init(){
 
         updateGauge(last.composite,last.label);
         updateIndicators(last);
-        document.getElementById('gaugeSub').textContent=last.date+' 기준 · 6개 지표 평균';
+        document.getElementById('gaugeSub').textContent=last.date+' 기준 · 7개 지표 평균';
 
         document.getElementById('loadingEl').style.display='none';
         document.getElementById('chartsEl').style.display='block';
@@ -483,7 +500,7 @@ init();
 function ensureKakao(){try{if(typeof Kakao!=='undefined'&&!Kakao.isInitialized())Kakao.init(KAKAO_KEY);return typeof Kakao!=='undefined'&&Kakao.isInitialized();}catch(e){return false;}}
 function copyToClipboard(t){if(window.parent!==window){window.parent.postMessage({type:'copy',text:t},'*')}if(navigator.clipboard&&navigator.clipboard.writeText&&window.isSecureContext){navigator.clipboard.writeText(t).catch(function(){_fbCopy(t)})}else{_fbCopy(t)}}function _fbCopy(t){var a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;left:-9999px;top:-9999px;opacity:0';document.body.appendChild(a);a.focus();a.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(a)}
 function flashCopied(btn){if(!btn)return;var orig=btn.innerHTML;btn.style.background='#22c55e';btn.style.color='#fff';btn.style.borderColor='#22c55e';btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';setTimeout(function(){btn.style.background='';btn.style.color='';btn.style.borderColor='';btn.innerHTML=orig;},2000);}
-function kakaoShare(title){if(!ensureKakao()){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');return;}try{Kakao.Share.sendDefault({objectType:'feed',content:{title:title||document.title,description:'6개 지표 기반 종합 시장 센티먼트',imageUrl:'',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}},buttons:[{title:'대시보드 보기',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}}]});}catch(e){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');}}
+function kakaoShare(title){if(!ensureKakao()){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');return;}try{Kakao.Share.sendDefault({objectType:'feed',content:{title:title||document.title,description:'7개 지표 기반 종합 시장 센티먼트',imageUrl:'',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}},buttons:[{title:'대시보드 보기',link:{mobileWebUrl:SHARE_URL,webUrl:SHARE_URL}}]});}catch(e){copyToClipboard(SHARE_URL);showToast('링크 복사완료!');}}
 function showToast(msg){var w=document.querySelector('.toast-wrap');if(!w){w=document.createElement('div');w.className='toast-wrap';document.body.appendChild(w);}var t=document.createElement('div');t.className='toast';t.textContent=msg;w.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(12px)';t.style.transition='.3s';setTimeout(function(){t.remove();},300);},3000);}
 function doShare(p,btn){var title='공포 & 탐욕 지수 · Market Sentiment — herdvibe.com';switch(p){case'twitter':window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(title)+'&url='+encodeURIComponent(SHARE_URL),'_blank');break;case'telegram':window.open('https://t.me/share/url?url='+encodeURIComponent(SHARE_URL)+'&text='+encodeURIComponent(title),'_blank');break;case'kakao':kakaoShare(title);break;case'instagram':copyToClipboard(SHARE_URL);flashCopied(btn);showToast('링크 복사완료! 인스타그램에 붙여넣기 하세요');break;case'link':copyToClipboard(SHARE_URL);flashCopied(btn);showToast('링크가 복사되었습니다');break;}}
 var xI='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
